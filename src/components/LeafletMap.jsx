@@ -23,16 +23,22 @@ const LeafletMap = ({ selectedCity, onCitySelect, cities }) => {
 
     const map = L.map(mapRef.current, {
       minZoom: 2,
-      maxBounds: worldBounds,
-      maxBoundsViscosity: 1.0
+      worldCopyJump: true
     }).setView([20, 0], 2);
     mapInstanceRef.current = map;
 
+    // Clamp latitude to avoid panning beyond poles while allowing horizontal wrap
+    map.on('moveend', () => {
+      const center = map.getCenter();
+      const clampedLat = Math.max(-85, Math.min(85, center.lat));
+      if (clampedLat !== center.lat) {
+        map.panTo([clampedLat, center.lng], { animate: false });
+      }
+    });
+
     // Add base OSM layer
     const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-      noWrap: true,
-      bounds: worldBounds
+      attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
     // Add OpenWeather Clouds overlay (default ON)
@@ -46,9 +52,7 @@ const LeafletMap = ({ selectedCity, onCitySelect, cities }) => {
 
     const clouds = L.tileLayer(`https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${apiKey}`, {
       attribution: 'Map data © OpenWeather',
-      opacity: 0.6,
-      noWrap: true,
-      bounds: worldBounds
+      opacity: 0.6
     }).addTo(map);
 
     // Layer control
