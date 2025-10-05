@@ -28,13 +28,16 @@ const LeafletMap = ({ selectedCity, onCitySelect, cities }) => {
     mapInstanceRef.current = map;
 
     // Clamp latitude to avoid panning beyond poles while allowing horizontal wrap
-    map.on('moveend', () => {
+    const clampLatitude = () => {
       const center = map.getCenter();
       const clampedLat = Math.max(-85, Math.min(85, center.lat));
       if (clampedLat !== center.lat) {
         map.panTo([clampedLat, center.lng], { animate: false });
       }
-    });
+    };
+    map.on('move', clampLatitude);
+    map.on('zoomend', clampLatitude);
+    map.on('dragend', clampLatitude);
 
     // Add base OSM layer
     const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
