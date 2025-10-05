@@ -40,7 +40,7 @@ const LeafletMap = ({ selectedCity, onCitySelect, cities }) => {
     try {
       owmKey = typeof localStorage !== 'undefined' ? localStorage.getItem('owm_api_key') : null;
     } catch {}
-    const envOwm = typeof import !== 'undefined' && import.meta && import.meta.env ? import.meta.env.VITE_OWM_API_KEY : null;
+    const envOwm = import.meta?.env?.VITE_OWM_API_KEY || null;
     const fallbackOwm = '68113ab7de795b5f96755f0fe903a960';
     const apiKey = (owmKey && owmKey.trim()) || (envOwm && String(envOwm).trim()) || fallbackOwm;
 
