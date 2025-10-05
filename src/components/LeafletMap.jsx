@@ -35,6 +35,8 @@ const LeafletMap = ({ selectedCity, onCitySelect, cities }) => {
         map.panTo([clampedLat, center.lng], { animate: false });
       }
     };
+    map.on('move', clampLatitude);
+    map.on('drag', clampLatitude);
     map.on('moveend', clampLatitude);
     map.on('zoomend', clampLatitude);
 
