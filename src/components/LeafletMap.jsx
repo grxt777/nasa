@@ -28,12 +28,35 @@ const LeafletMap = ({ selectedCity, onCitySelect, cities }) => {
     }).setView([20, 0], 2);
     mapInstanceRef.current = map;
 
-    // Add tile layer
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    // Add base OSM layer
+    const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors',
       noWrap: true,
       bounds: worldBounds
     }).addTo(map);
+
+    // Add OpenWeather Clouds overlay (default ON)
+    let owmKey = null;
+    try {
+      owmKey = typeof localStorage !== 'undefined' ? localStorage.getItem('owm_api_key') : null;
+    } catch {}
+    const envOwm = typeof import !== 'undefined' && import.meta && import.meta.env ? import.meta.env.VITE_OWM_API_KEY : null;
+    const fallbackOwm = '68113ab7de795b5f96755f0fe903a960';
+    const apiKey = (owmKey && owmKey.trim()) || (envOwm && String(envOwm).trim()) || fallbackOwm;
+
+    const clouds = L.tileLayer(`https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${apiKey}`, {
+      attribution: 'Map data © OpenWeather',
+      opacity: 0.6,
+      noWrap: true,
+      bounds: worldBounds
+    }).addTo(map);
+
+    // Layer control
+    L.control.layers(
+      { 'OpenStreetMap': osm },
+      { 'Clouds (OpenWeather)': clouds },
+      { collapsed: true, position: 'topright' }
+    ).addTo(map);
 
     // Add city markers
     const markers = cities.map(city => {
