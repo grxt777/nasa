@@ -20,6 +20,7 @@ const LeafletMap = ({ selectedCity, onCitySelect, cities }) => {
 
     // Initialize map
     const worldBounds = [[-85, -180], [85, 180]];
+    const worldLatLngBounds = L.latLngBounds(worldBounds);
 
     const map = L.map(mapRef.current, {
       minZoom: 2,
@@ -27,6 +28,13 @@ const LeafletMap = ({ selectedCity, onCitySelect, cities }) => {
       maxBoundsViscosity: 1.0
     }).setView([20, 0], 2);
     mapInstanceRef.current = map;
+
+    // Ensure the map stays strictly inside bounds after any move/zoom
+    const keepInsideBounds = () => {
+      map.panInsideBounds(worldLatLngBounds, { animate: false });
+    };
+    map.on('moveend', keepInsideBounds);
+    map.on('zoomend', keepInsideBounds);
 
 
     // Add base OSM layer
