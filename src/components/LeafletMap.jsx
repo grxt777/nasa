@@ -61,7 +61,8 @@ const LeafletMap = ({ selectedCity, onCitySelect, cities }) => {
 
     const clouds = L.tileLayer(`https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${apiKey}`, {
       attribution: 'Map data © OpenWeather',
-      opacity: 0.6
+      opacity: 0.6,
+      className: 'owm-clouds-tiles'
     }).addTo(map);
 
     // Layer control
