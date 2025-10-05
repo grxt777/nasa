@@ -12,7 +12,9 @@ class NasaDataService {
     }
 
     try {
-      const response = await fetch(`/nasa_weather_data/${csvFileName}`);
+      const base = import.meta?.env?.BASE_URL || '/';
+      const url = `${base.replace(/\/$/, '')}/nasa_weather_data/${csvFileName}`;
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`Failed to load data for ${cityName}: ${response.statusText}`);
       }

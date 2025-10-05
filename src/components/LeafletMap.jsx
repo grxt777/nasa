@@ -19,12 +19,20 @@ const LeafletMap = ({ selectedCity, onCitySelect, cities }) => {
     if (!mapRef.current) return;
 
     // Initialize map
-    const map = L.map(mapRef.current).setView([20, 0], 2);
+    const worldBounds = [[-85, -180], [85, 180]];
+
+    const map = L.map(mapRef.current, {
+      minZoom: 2,
+      maxBounds: worldBounds,
+      maxBoundsViscosity: 1.0
+    }).setView([20, 0], 2);
     mapInstanceRef.current = map;
 
     // Add tile layer
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors'
+      attribution: '© OpenStreetMap contributors',
+      noWrap: true,
+      bounds: worldBounds
     }).addTo(map);
 
     // Add city markers
