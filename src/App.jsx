@@ -267,8 +267,12 @@ function App() {
           </div>
         )}
 
-            {/* API Key Configuration */}
-            {/* <ApiKeyConfig onApiKeySet={() => {}} /> */}
+            {/* API Key Configuration: show when no API key present */}
+            {(!localStorage.getItem('gemini_api_key') && !import.meta.env.VITE_GEMINI_API_KEY) && (
+              <div className="mb-6">
+                <ApiKeyConfig onApiKeySet={() => { /* triggers rerender via localStorage */ }} />
+              </div>
+            )}
 
             {/* Data Test Component */}
             {/* <div className="mb-6">

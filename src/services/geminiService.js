@@ -1,6 +1,12 @@
 class GeminiService {
   constructor() {
-    this.apiKey = import.meta.env.VITE_GEMINI_API_KEY || null;
+    // Prefer runtime-provided keys first (localStorage or window), then env
+    let runtimeKey = null;
+    try {
+      runtimeKey = typeof localStorage !== 'undefined' ? localStorage.getItem('gemini_api_key') : null;
+    } catch {}
+    const windowKey = typeof window !== 'undefined' && window.GEMINI_API_KEY ? window.GEMINI_API_KEY : null;
+    this.apiKey = runtimeKey || windowKey || import.meta.env.VITE_GEMINI_API_KEY || null;
     this.baseUrl = 'https://generativelanguage.googleapis.com/v1';
   }
 
