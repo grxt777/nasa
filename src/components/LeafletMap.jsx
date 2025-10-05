@@ -20,28 +20,28 @@ const LeafletMap = ({ selectedCity, onCitySelect, cities }) => {
 
     // Initialize map
     const worldBounds = [[-85, -180], [85, 180]];
-    const worldLatLngBounds = L.latLngBounds(worldBounds);
 
     const map = L.map(mapRef.current, {
       minZoom: 2,
-      maxBounds: worldBounds,
-      maxBoundsViscosity: 1.0
+      worldCopyJump: true
     }).setView([20, 0], 2);
     mapInstanceRef.current = map;
 
-    // Ensure the map stays strictly inside bounds after any move/zoom
-    const keepInsideBounds = () => {
-      map.panInsideBounds(worldLatLngBounds, { animate: false });
+    // Clamp only latitude to keep within poles while allowing horizontal wrap
+    const clampLatitude = () => {
+      const center = map.getCenter();
+      const clampedLat = Math.max(-85, Math.min(85, center.lat));
+      if (clampedLat !== center.lat) {
+        map.panTo([clampedLat, center.lng], { animate: false });
+      }
     };
-    map.on('moveend', keepInsideBounds);
-    map.on('zoomend', keepInsideBounds);
+    map.on('moveend', clampLatitude);
+    map.on('zoomend', clampLatitude);
 
 
     // Add base OSM layer
     const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-      noWrap: true,
-      bounds: worldBounds
+      attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
     // Add OpenWeather Clouds overlay (default ON)
@@ -55,9 +55,7 @@ const LeafletMap = ({ selectedCity, onCitySelect, cities }) => {
 
     const clouds = L.tileLayer(`https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${apiKey}`, {
       attribution: 'Map data © OpenWeather',
-      opacity: 0.6,
-      noWrap: true,
-      bounds: worldBounds
+      opacity: 0.6
     }).addTo(map);
 
     // Layer control
