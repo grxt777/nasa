@@ -27,6 +27,10 @@ const LeafletMap = ({ selectedCity, onCitySelect, cities }) => {
     }).setView([20, 0], 2);
     mapInstanceRef.current = map;
 
+    // Hard-limit vertical panning while keeping horizontal wrap (wide longitudinal bounds)
+    map.setMaxBounds([[-85, -540], [85, 540]]);
+    map.options.maxBoundsViscosity = 1.0;
+
     // Clamp only latitude to keep within poles while allowing horizontal wrap
     const clampLatitude = () => {
       const center = map.getCenter();
