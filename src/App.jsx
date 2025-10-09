@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import LeafletMap from './components/LeafletMap';
 import WeatherCards from './components/WeatherCards';
@@ -6,8 +6,13 @@ import WeatherGraphs from './components/WeatherGraphs';
 import AIAnalysis from './components/AIAnalysis';
 import AlternativeDates from './components/AlternativeDates';
 import ApiKeyConfig from './components/ApiKeyConfig';
+import LoadingSpinner from './components/LoadingSpinner';
+import ProgressBar from './components/ProgressBar';
+import LoadingSkeleton from './components/LoadingSkeleton';
 import { useWeatherData } from './hooks/useWeatherData';
 import SuitabilityAssessment from './components/SuitabilityAssessment';
+import ClimateHistoryDashboard from './components/ClimateHistoryDashboard';
+import Footer from './components/Footer';
 import { cities } from './data/cities';
 import { Menu, X } from 'lucide-react';
 
@@ -15,17 +20,34 @@ function App() {
   const [selectedCity, setSelectedCity] = useState(null);
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedEvent, setSelectedEvent] = useState('');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // Sidebar closed by default on mobile, open on desktop
+  const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
   const [selectedVariable, setSelectedVariable] = useState('T2M_MAX');
 
   const {
     weatherData,
     trendData,
     isLoading,
+    loadingProgress,
+    loadingStage,
     error,
     analyzeWeatherData,
     resetData
   } = useWeatherData();
+
+  // Automatic sidebar management on window resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setSidebarOpen(true);
+      } else {
+        setSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleCitySelect = (city) => {
     setSelectedCity(city);
@@ -211,17 +233,17 @@ function App() {
   const hasData = weatherData !== null;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Mobile Overlay */}
       {sidebarOpen && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* Left Sidebar */}
-      {sidebarOpen && (
+      {/* Left Sidebar - Mobile */}
+      <div className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} fixed top-0 left-0 h-full w-72 z-50 lg:hidden transition-transform duration-300 ease-in-out`}>
         <Sidebar
           selectedCity={selectedCity}
           onCityChange={handleCitySelect}
@@ -235,15 +257,42 @@ function App() {
           onDownloadPDF={handleDownloadPDF}
           onReset={handleReset}
           isLoading={isLoading}
+          loadingProgress={loadingProgress}
+          loadingStage={loadingStage}
           hasData={hasData}
+          onClose={() => setSidebarOpen(false)}
         />
-      )}
+      </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col">
+      {/* Main Layout Container */}
+      <div className="flex-1 flex">
+        {/* Left Sidebar - Desktop */}
+        <div className={`${sidebarOpen ? 'w-72' : 'w-0'} hidden lg:block transition-all duration-300 ease-in-out overflow-hidden`}>
+          <Sidebar
+            selectedCity={selectedCity}
+            onCityChange={handleCitySelect}
+            selectedDate={selectedDate}
+            onDateChange={handleDateChange}
+            selectedEvent={selectedEvent}
+            onEventChange={handleEventChange}
+            onShowResults={handleShowResults}
+            onDownloadCSV={handleDownloadCSV}
+            onDownloadJSON={handleDownloadJSON}
+            onDownloadPDF={handleDownloadPDF}
+            onReset={handleReset}
+            isLoading={isLoading}
+            loadingProgress={loadingProgress}
+            loadingStage={loadingStage}
+            hasData={hasData}
+            onClose={() => setSidebarOpen(false)}
+          />
+        </div>
+
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col min-w-0">
         {/* Top Bar */}
-        <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="bg-white border-b border-gray-200 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-4">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
@@ -251,15 +300,30 @@ function App() {
               {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Анализ Погоды NASA</h1>
-              <p className="text-sm text-gray-500">Исторические данные и прогнозы на основе 25 лет наблюдений</p>
+              <h1 className="text-lg sm:text-2xl font-bold text-gray-900">NASA SmartWeather</h1>
+              <p className="text-xs sm:text-sm text-gray-500">Historical data and forecasts based on 25 years of observations</p>
             </div>
           </div>
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-6">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
+          <div className="p-2 sm:p-4 md:p-6">
+        {/* Loading Progress */}
+        {isLoading && (
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <ProgressBar 
+              progress={loadingProgress} 
+              text={loadingStage}
+              className="mb-2"
+            />
+            <div className="flex items-center gap-2 text-blue-600">
+              <LoadingSpinner size="sm" showText={false} />
+              <span className="text-sm">Analyzing weather data...</span>
+            </div>
+          </div>
+        )}
+
         {/* Error Message */}
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -280,71 +344,108 @@ function App() {
             </div> */}
 
             {/* Interactive Map */}
-            <div className="mb-8">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4">Интерактивная карта</h2>
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <LeafletMap
-            selectedCity={selectedCity}
-            onCitySelect={handleCitySelect}
-            cities={cities}
-          />
-              </div>
+            <div className="mb-4 sm:mb-6">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2 sm:mb-4">Interactive Map</h2>
+              {isLoading ? (
+                <LoadingSkeleton type="map" />
+              ) : (
+                <LeafletMap
+                  selectedCity={selectedCity}
+                  onCitySelect={handleCitySelect}
+                  cities={cities}
+                  weatherData={weatherData}
+                />
+              )}
             </div>
 
 
-            {/* Weather Cards - Only show when data is available */}
-            {hasData && (
-              <div className="mb-8">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">Погодные показатели</h2>
+            {/* Weather Cards */}
+            <div className="mb-4 sm:mb-6">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2 sm:mb-4">Weather Indicators</h2>
+              {isLoading ? (
+                <LoadingSkeleton type="card" count={6} />
+              ) : hasData ? (
                 <WeatherCards 
                   weatherData={weatherData} 
                   selectedCity={selectedCity}
                   selectedDate={selectedDate}
                   selectedEvent={selectedEvent}
                 />
-              </div>
-            )}
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  Select a city and date to view weather indicators
+                </div>
+              )}
+            </div>
 
-            {/* AI Analysis - Only show when data is available */}
-            {hasData && (
-              <div className="mb-8">
+            {/* AI Analysis */}
+            <div className="mb-4 sm:mb-6">
+              {isLoading ? (
+                <LoadingSkeleton type="text" count={3} />
+              ) : hasData ? (
                 <AIAnalysis 
                   weatherData={weatherData} 
                   selectedCity={selectedCity} 
                   selectedDate={selectedDate}
                   selectedEvent={selectedEvent}
                 />
+              ) : null}
+            </div>
+
+            {/* Suitability Assessment */}
+            {isLoading ? (
+              <div className="mb-4 sm:mb-6">
+                <LoadingSkeleton type="card" count={1} />
               </div>
-            )}
+            ) : hasData ? (
+              <SuitabilityAssessment 
+                weatherData={weatherData} 
+                selectedCity={selectedCity}
+                selectedDate={selectedDate}
+                selectedEvent={selectedEvent}
+              />
+            ) : null}
 
-            {/* Suitability Assessment - Only show when data is available */}
-            {hasData && (
-              <SuitabilityAssessment weatherData={weatherData} />
-            )}
-
-            {/* Weather Graphs - Only show when data is available */}
-            {hasData && (
-              <div className="mb-8">
+            {/* Weather Graphs */}
+            <div className="mb-4 sm:mb-6">
+              {isLoading ? (
+                <LoadingSkeleton type="graph" count={1} />
+              ) : hasData ? (
                 <WeatherGraphs
                   weatherData={weatherData}
                   trendData={trendData}
                   selectedVariable={selectedVariable}
                   onVariableChange={handleVariableChange}
                 />
-              </div>
-            )}
+              ) : null}
+            </div>
 
-            {/* Alternative Dates - Only show when data is available */}
-            {hasData && (
-              <div className="mb-8">
+            {/* Alternative Dates */}
+            <div className="mb-4 sm:mb-6">
+              {isLoading ? (
+                <LoadingSkeleton type="text" count={2} />
+              ) : hasData ? (
                 <AlternativeDates 
                   weatherData={weatherData} 
                   selectedCity={selectedCity} 
                   selectedDate={selectedDate}
                   selectedEvent={selectedEvent}
                 />
-              </div>
-            )}
+              ) : null}
+            </div>
+
+            {/* Climate History Dashboard */}
+            <div className="mb-4 sm:mb-6">
+              {isLoading ? (
+                <LoadingSkeleton type="text" count={2} />
+              ) : hasData && weatherData && selectedCity ? (
+                <ClimateHistoryDashboard 
+                  weatherData={weatherData} 
+                  selectedCity={selectedCity} 
+                  selectedDate={selectedDate}
+                />
+              ) : null}
+            </div>
 
         {/* Instructions for first-time users */}
         {!hasData && !isLoading && (
@@ -356,22 +457,26 @@ function App() {
                 </svg>
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                Начните анализ погоды
+                Start Weather Analysis
               </h3>
               <p className="text-gray-600 mb-6">
-                    Выберите город и дату в левой панели, затем нажмите "Показать результаты" для получения подробного анализа погоды на основе исторических данных NASA.
+                    Select a city and date in the left panel, then click "Show Results" to get detailed weather analysis based on NASA historical data.
               </p>
               <div className="space-y-2 text-sm text-gray-500">
-                    <p>• Выберите город из списка в левой панели</p>
-                    <p>• Укажите конкретную дату (например, "15 июля")</p>
-                    <p>• Получите анализ на основе данных за все доступные годы</p>
+                    <p>• Select a city from the list in the left panel</p>
+                    <p>• Specify a specific date (e.g., "July 15")</p>
+                    <p>• Get analysis based on data from all available years</p>
               </div>
             </div>
           </div>
         )}
           </div>
         </div>
+        </div>
       </div>
+    
+    {/* Footer */}
+    <Footer />
     </div>
   );
 }

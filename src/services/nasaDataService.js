@@ -1,4 +1,5 @@
 import Papa from 'papaparse';
+import { fetchWithRetry, getErrorMessage, logError, createFallbackData } from '../utils/errorHandler';
 
 class NasaDataService {
   constructor() {
@@ -14,9 +15,21 @@ class NasaDataService {
     try {
       const base = import.meta?.env?.BASE_URL || '/';
       const url = `${base.replace(/\/$/, '')}/nasa_weather_data/${csvFileName}`;
-      const response = await fetch(url);
+      
+      const response = await fetchWithRetry(
+        url,
+        {},
+        {
+          maxRetries: 3,
+          baseDelay: 500,
+          onRetry: (attempt, maxRetries, delay, error) => {
+            console.log(`Retrying data load for ${cityName} (${attempt}/${maxRetries}) after ${delay}ms. Error:`, error.message);
+          }
+        }
+      );
+      
       if (!response.ok) {
-        throw new Error(`Failed to load data for ${cityName}: ${response.statusText}`);
+        throw new Error(`Не удалось загрузить данные для ${cityName}: ${response.statusText}`);
       }
 
       const csvText = await response.text();
@@ -26,8 +39,11 @@ class NasaDataService {
       this.cache.set(csvFileName, data);
       return data;
     } catch (error) {
-      console.error(`Error loading data for ${cityName}:`, error);
-      throw error;
+      logError(error, `loadCityData-${cityName}`);
+      
+      // Возвращаем fallback данные вместо выброса ошибки
+      console.warn(`Using fallback data for ${cityName} due to loading error`);
+      return [];
     }
   }
 

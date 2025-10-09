@@ -1,0 +1,41 @@
+<svg width="200" height="120" viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="altocumulusGradient" cx="50%" cy="40%" r="70%">
+      <stop offset="0%" style="stop-color:#f0f0f0;stop-opacity:1" />
+      <stop offset="60%" style="stop-color:#e0e0e0;stop-opacity:0.9" />
+      <stop offset="100%" style="stop-color:#c0c0c0;stop-opacity:0.7" />
+    </radialGradient>
+    <filter id="altocumulusShadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="3"/>
+      <feOffset dx="2" dy="5" result="offset"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.3"/>
+      </feComponentTransfer>
+      <feMerge> 
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <g filter="url(#altocumulusShadow)">
+    <!-- Высококучевые облака - среднего размера -->
+    <circle cx="45" cy="60" r="20" fill="url(#altocumulusGradient)"/>
+    <circle cx="75" cy="55" r="25" fill="url(#altocumulusGradient)"/>
+    <circle cx="105" cy="60" r="22" fill="url(#altocumulusGradient)"/>
+    <circle cx="135" cy="65" r="20" fill="url(#altocumulusGradient)"/>
+    <circle cx="165" cy="70" r="18" fill="url(#altocumulusGradient)"/>
+    
+    <!-- Дополнительные части -->
+    <circle cx="30" cy="75" r="15" fill="url(#altocumulusGradient)"/>
+    <circle cx="180" cy="75" r="16" fill="url(#altocumulusGradient)"/>
+    <circle cx="60" cy="40" r="12" fill="url(#altocumulusGradient)"/>
+    <circle cx="140" cy="45" r="14" fill="url(#altocumulusGradient)"/>
+    
+    <!-- Нижний ряд -->
+    <circle cx="50" cy="85" r="18" fill="url(#altocumulusGradient)"/>
+    <circle cx="90" cy="80" r="20" fill="url(#altocumulusGradient)"/>
+    <circle cx="130" cy="85" r="17" fill="url(#altocumulusGradient)"/>
+    <circle cx="170" cy="90" r="15" fill="url(#altocumulusGradient)"/>
+  </g>
+</svg>

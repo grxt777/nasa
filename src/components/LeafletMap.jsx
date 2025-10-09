@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import AdvancedWeatherEffectsRenderer from '../utils/advancedWeatherEffects';
 
 // Fix for default markers in Leaflet with Vite
 delete L.Icon.Default.prototype._getIconUrl;
@@ -10,10 +11,11 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-const LeafletMap = ({ selectedCity, onCitySelect, cities }) => {
+const LeafletMap = ({ selectedCity, onCitySelect, cities, weatherData }) => {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef([]);
+  const effectsRendererRef = useRef(null);
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -23,7 +25,21 @@ const LeafletMap = ({ selectedCity, onCitySelect, cities }) => {
 
     const map = L.map(mapRef.current, {
       minZoom: 2,
-      worldCopyJump: true
+      worldCopyJump: true,
+      // Mobile optimization
+      touchZoom: true,
+      doubleClickZoom: true,
+      scrollWheelZoom: true,
+      boxZoom: false, // Disable box zoom for mobile
+      keyboard: true,
+      dragging: true,
+      // Enhanced settings for touch devices
+      tap: true,
+      tapTolerance: 15,
+      // Performance optimization
+      preferCanvas: false,
+      zoomControl: true,
+      attributionControl: true
     }).setView([20, 0], 2);
     mapInstanceRef.current = map;
 
@@ -99,9 +115,12 @@ const LeafletMap = ({ selectedCity, onCitySelect, cities }) => {
         onCitySelect(city);
       });
 
-      marker.bindTooltip(`${city.name}, ${city.country}`, {
+      // Base tooltip
+      const baseTooltip = `${city.name}, ${city.country}`;
+      marker.bindTooltip(baseTooltip, {
         direction: 'top',
-        offset: [0, -10]
+        offset: [0, -10],
+        className: 'custom-tooltip'
       });
 
       return marker;
@@ -153,9 +172,81 @@ const LeafletMap = ({ selectedCity, onCitySelect, cities }) => {
     }
   }, [selectedCity, cities]);
 
+  // Initialize weather effects renderer
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+
+    // Create city coordinates for renderer
+    const cityCoordinates = {};
+    cities.forEach(city => {
+      cityCoordinates[city.name] = [city.lat, city.lng];
+    });
+
+    // Initialize renderer (advanced version with 3D effects)
+    effectsRendererRef.current = new AdvancedWeatherEffectsRenderer(
+      mapInstanceRef.current,
+      cityCoordinates
+    );
+
+    return () => {
+      if (effectsRendererRef.current) {
+        effectsRendererRef.current.destroy();
+      }
+    };
+  }, [cities]);
+
+  // Render weather effects when city or weather data changes
+  useEffect(() => {
+    if (!effectsRendererRef.current || !selectedCity || !weatherData) {
+      // Stop effects if no data
+      if (effectsRendererRef.current) {
+        effectsRendererRef.current.stopEffects();
+      }
+      return;
+    }
+
+    // Prepare data for effects
+    const effectsData = {
+      temperature: weatherData.temperature?.average || 0,
+      humidity: weatherData.humidity?.average || 0,
+      windSpeed: weatherData.wind?.average || 0,
+      precipitation: weatherData.precipitation?.average || 0,
+      uvIndex: weatherData.uv?.average || 0,
+      comfortScore: weatherData.comfort?.score || 5
+    };
+
+    // console.log('🌤️ Weather effects data:', effectsData);
+    // console.log('🏙️ Selected city:', selectedCity.name);
+
+    // Start effects
+    effectsRendererRef.current.renderWeatherEffects(selectedCity.name, effectsData);
+
+    // Update tooltip of selected city with weather data
+    if (markersRef.current.length > 0) {
+      const cityIndex = cities.findIndex(c => c.id === selectedCity.id);
+      if (cityIndex !== -1 && markersRef.current[cityIndex]) {
+        const marker = markersRef.current[cityIndex];
+        const weatherTooltip = `
+          <div class="weather-tooltip" style="font-family: 'Wix Madefor Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;">
+            <div class="font-bold text-base mb-3">${selectedCity.name}, ${selectedCity.country}</div>
+            <div class="text-sm space-y-2">
+              <div>🌡 Temperature: ${effectsData.temperature.toFixed(1)}°C</div>
+              <div>💧 Humidity: ${effectsData.humidity.toFixed(0)}%</div>
+              <div>💨 Wind: ${effectsData.windSpeed.toFixed(1)} m/s</div>
+              <div>🌧 Precipitation: ${effectsData.precipitation.toFixed(1)} mm</div>
+              <div>☀️ UV: ${effectsData.uvIndex.toFixed(1)}</div>
+              <div>😊 Comfort: ${effectsData.comfortScore.toFixed(1)}/10</div>
+            </div>
+          </div>
+        `;
+        marker.setTooltipContent(weatherTooltip);
+      }
+    }
+  }, [selectedCity, weatherData, cities]);
+
   return (
-    <div className="w-full h-96 rounded-lg overflow-hidden border border-gray-200 shadow-sm">
-      <div ref={mapRef} className="w-full h-full" />
+    <div className="w-full max-w-full h-64 sm:h-72 md:h-80 lg:h-96 xl:h-[500px] rounded-lg overflow-hidden border border-blue-100 shadow-md">
+      <div ref={mapRef} className="w-full h-full" style={{ maxWidth: '100%' }} />
     </div>
   );
 };

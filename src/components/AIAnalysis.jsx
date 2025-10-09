@@ -186,18 +186,21 @@ const AIAnalysis = ({ weatherData, selectedCity, selectedDate, selectedEvent }) 
   return (
     <div className="space-y-6">
       {/* Main AI Analysis Card */}
-      <div className="bg-white rounded-xl shadow-lg border-2 border-blue-200 p-8 mb-8">
+      <div className="nasa-card mb-4 sm:mb-6">
         <div className="flex items-center gap-4 mb-6">
           <div className="p-4 rounded-xl bg-blue-50">
             <Brain className="w-8 h-8 text-blue-600" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">AI-Анализ дня</h2>
-            <p className="text-sm text-gray-500">Глубокий анализ погодных условий</p>
+            <h2 className="text-2xl font-bold text-gray-900">AI Day Analysis</h2>
+            <p className="text-sm text-gray-500">Deep analysis of weather conditions</p>
           </div>
         </div>
         {isLoadingSuggestions ? (
-          <div className="flex items-center gap-2 text-blue-600"><Loader2 className="animate-spin" /> Загрузка AI-анализа...</div>
+              <div className="flex items-center gap-2 text-blue-600">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="text-sm">Loading AI analysis...</span>
+              </div>
         ) : suggestionsError ? (
           <div className="text-red-600 font-medium">{suggestionsError}</div>
         ) : aiAnalysis ? (

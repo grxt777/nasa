@@ -6,6 +6,8 @@ export const useWeatherData = () => {
   const [weatherData, setWeatherData] = useState(null);
   const [trendData, setTrendData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [loadingStage, setLoadingStage] = useState('');
   const [error, setError] = useState(null);
 
   const analyzeWeatherData = useCallback(async (city, selectedDate, variable = 'T2M_MAX') => {
@@ -15,12 +17,17 @@ export const useWeatherData = () => {
     }
 
     setIsLoading(true);
+    setLoadingProgress(0);
+    setLoadingStage('Инициализация...');
     setError(null);
 
     try {
       console.log('Starting weather analysis for:', city.name, selectedDate);
       
-      // Load NASA data for the selected city and date with ±5 day window
+      // Этап 1: Загрузка данных NASA
+      setLoadingProgress(20);
+      setLoadingStage('Загрузка данных NASA...');
+      
       const weatherDataResult = await nasaDataService.getWeatherDataForDate(
         city.name, 
         city.csvFile, 
@@ -38,15 +45,25 @@ export const useWeatherData = () => {
         return;
       }
       
-      // Calculate probabilities based on historical data for this day
+      // Этап 2: Расчет вероятностей
+      setLoadingProgress(50);
+      setLoadingStage('Анализ погодных данных...');
+      
       const probabilities = calculateWeatherProbabilities(weatherDataResult.data, selectedDate);
       console.log('Calculated probabilities:', probabilities);
       setWeatherData(probabilities);
 
-      // Generate trend data using all available data for this city and selected variable
+      // Этап 3: Генерация трендов
+      setLoadingProgress(80);
+      setLoadingStage('Построение графиков...');
+      
       const allCityData = await nasaDataService.loadCityData(city.name, city.csvFile);
       const trends = generateTrendData(allCityData, variable);
       setTrendData(trends);
+      
+      // Завершение
+      setLoadingProgress(100);
+      setLoadingStage('Готово!');
 
     } catch (err) {
       console.error('Error in weather analysis:', err);
@@ -55,6 +72,11 @@ export const useWeatherData = () => {
       setTrendData(null);
     } finally {
       setIsLoading(false);
+      // Небольшая задержка перед сбросом прогресса для лучшего UX
+      setTimeout(() => {
+        setLoadingProgress(0);
+        setLoadingStage('');
+      }, 1000);
     }
   }, []);
 
@@ -63,12 +85,16 @@ export const useWeatherData = () => {
     setTrendData(null);
     setError(null);
     setIsLoading(false);
+    setLoadingProgress(0);
+    setLoadingStage('');
   }, []);
 
   return {
     weatherData,
     trendData,
     isLoading,
+    loadingProgress,
+    loadingStage,
     error,
     analyzeWeatherData,
     resetData

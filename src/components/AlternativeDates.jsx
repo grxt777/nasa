@@ -4,6 +4,7 @@ import {
   Loader2
 } from 'lucide-react';
 import geminiService from '../services/geminiService';
+import AnimatedCard from './AnimatedCard';
 
 const AlternativeDates = ({ weatherData, selectedCity, selectedDate, selectedEvent }) => {
   const [alternativeDates, setAlternativeDates] = useState('');
@@ -189,20 +190,22 @@ const AlternativeDates = ({ weatherData, selectedCity, selectedDate, selectedEve
     <div className="space-y-6">
       {/* Alternative Dates */}
       {alternativeDates && (
-        <div className="bg-white rounded-xl shadow-lg border border-purple-200 p-6 w-full">
-          <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-pink-700 rounded-xl flex items-center justify-center shadow-lg">
-                <Calendar className="w-6 h-6 text-white" />
+        <AnimatedCard direction="scale" delay={200} duration={700}>
+          <div className="nasa-card mb-4 sm:mb-6">
+            <div className="flex items-center gap-4 mb-6">
+              <div className="p-4 rounded-xl bg-purple-50">
+                <Calendar className="w-8 h-8 text-purple-600" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-gray-900" style={{ fontFamily: 'Wix Madefor Display, sans-serif' }}>
-                  Альтернативные даты
-                </h3>
-                <p className="text-purple-600 font-medium">Лучшие варианты для планирования</p>
+                <h2 className="text-2xl font-bold text-gray-900">Alternative Dates</h2>
+                <p className="text-sm text-gray-500">Best options for planning</p>
               </div>
             </div>
             {isLoadingSuggestions ? (
-              <div className="flex items-center gap-2 text-purple-600"><Loader2 className="animate-spin" /> Загрузка альтернативных дат...</div>
+              <div className="flex items-center gap-2 text-purple-600">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="text-sm">Loading alternative dates...</span>
+              </div>
             ) : suggestionsError ? (
               <div className="text-red-600 font-medium">{suggestionsError}</div>
             ) : (
@@ -210,7 +213,8 @@ const AlternativeDates = ({ weatherData, selectedCity, selectedDate, selectedEve
                 {formatAIText(alternativeDates)}
               </div>
             )}
-        </div>
+          </div>
+        </AnimatedCard>
       )}
     </div>
   );

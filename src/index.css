@@ -10,11 +10,32 @@
 
 @layer components {
   .card {
-    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-6;
+    @apply bg-white rounded-lg shadow-md border border-blue-100 p-6;
   }
   
-  .card-hover {
-    @apply hover:shadow-md hover:border-gray-300 transition-all duration-200;
+  /* NASA-themed card */
+  .nasa-card {
+    @apply bg-white rounded-lg shadow-md border border-blue-100 p-4 sm:p-5;
+    box-shadow: 0 4px 12px rgba(25, 60, 130, 0.08);
+  }
+  
+  /* Weather cards hover effect */
+  .weather-card {
+    @apply bg-white rounded-lg shadow-md border border-blue-100 p-4 sm:p-5 transition-all duration-300 ease-in-out;
+    box-shadow: 0 4px 12px rgba(25, 60, 130, 0.08);
+  }
+  
+  .weather-card:hover {
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15), 0 8px 16px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+  }
+
+  /* NASA Footer */
+  .nasa-footer {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+    border-top: 1px solid #404040;
+    backdrop-filter: blur(10px);
+    margin-top: auto;
   }
   
   .btn-primary {
@@ -49,6 +70,39 @@
 /* Tint OpenWeather cloud tiles red using CSS filters */
 .owm-clouds-tiles img {
   filter: hue-rotate(-20deg) saturate(6) brightness(1.1);
+}
+
+/* Fix Leaflet z-index on mobile */
+.leaflet-container {
+  z-index: 1 !important;
+}
+
+.leaflet-pane {
+  z-index: 2 !important;
+}
+
+.leaflet-top,
+.leaflet-bottom {
+  z-index: 10 !important;
+}
+
+/* Weather tooltip styling */
+.weather-tooltip {
+  @apply p-4 bg-white rounded-lg shadow-lg;
+  min-width: 240px;
+  font-family: 'Wix Madefor Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+}
+
+.leaflet-tooltip.custom-tooltip {
+  @apply bg-white border border-gray-200 rounded-lg shadow-lg;
+  padding: 8px 12px;
+  font-family: 'Wix Madefor Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.leaflet-tooltip.custom-tooltip:before {
+  border-top-color: white;
 }
 
 /* Mapbox Custom Styles */
