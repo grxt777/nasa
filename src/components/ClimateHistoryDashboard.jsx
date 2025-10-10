@@ -7,7 +7,11 @@ import {
   Calendar,
   Loader2,
   BarChart3,
-  Activity
+  Activity,
+  Download,
+  FileText,
+  Image,
+  FileSpreadsheet
 } from 'lucide-react';
 import AnimatedCard from './AnimatedCard';
 import geminiService from '../services/geminiService';
@@ -26,6 +30,10 @@ const ClimateHistoryDashboard = ({ weatherData, selectedCity, selectedDate }) =>
   const [devicePerformance, setDevicePerformance] = useState('high');
   const [animationFrameRate, setAnimationFrameRate] = useState(60);
   const [isMobile, setIsMobile] = useState(false);
+  
+  // Export and audit trail states
+  const [auditLog, setAuditLog] = useState([]);
+  const [isExporting, setIsExporting] = useState(false);
   
   // Refs for performance monitoring
   const performanceRef = useRef({ frameCount: 0, lastTime: 0 });
@@ -74,6 +82,12 @@ const ClimateHistoryDashboard = ({ weatherData, selectedCity, selectedDate }) =>
     return () => {
       window.removeEventListener('resize', checkMobile);
     };
+  }, []);
+
+  // Initialize audit log from localStorage
+  useEffect(() => {
+    const existingLogs = JSON.parse(localStorage.getItem('climateAnalysisLogs') || '[]');
+    setAuditLog(existingLogs);
   }, []);
 
   // Intersection Observer for lazy loading charts
@@ -135,12 +149,159 @@ const ClimateHistoryDashboard = ({ weatherData, selectedCity, selectedDate }) =>
     );
   }
 
+  // Audit trail logging
+  const logAnalysisRequest = useCallback((action, details = {}) => {
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      action,
+      city: selectedCity?.name || 'Unknown',
+      date: selectedDate || 'Unknown',
+      details,
+      userAgent: navigator.userAgent,
+      sessionId: sessionStorage.getItem('sessionId') || 'anonymous'
+    };
+    
+    setAuditLog(prev => [...prev, logEntry]);
+    
+    // Store in localStorage for persistence
+    const existingLogs = JSON.parse(localStorage.getItem('climateAnalysisLogs') || '[]');
+    existingLogs.push(logEntry);
+    localStorage.setItem('climateAnalysisLogs', JSON.stringify(existingLogs.slice(-100))); // Keep last 100 entries
+  }, [selectedCity, selectedDate]);
+
+  // Export functions
+  const exportChartAsPNG = useCallback(async (chartId, chartName) => {
+    setIsExporting(true);
+    try {
+      const canvas = document.querySelector(`#${chartId} canvas`);
+      if (!canvas) {
+        // For SVG charts, convert to canvas
+        const svg = document.querySelector(`#${chartId} svg`);
+        if (svg) {
+          const svgData = new XMLSerializer().serializeToString(svg);
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          const img = new Image();
+          
+          canvas.width = svg.clientWidth;
+          canvas.height = svg.clientHeight;
+          
+          img.onload = () => {
+            ctx.drawImage(img, 0, 0);
+            const link = document.createElement('a');
+            link.download = `${chartName}-${selectedCity?.name || 'unknown'}-${new Date().toISOString().split('T')[0]}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+          };
+          
+          img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
+        }
+      } else {
+        const link = document.createElement('a');
+        link.download = `${chartName}-${selectedCity?.name || 'unknown'}-${new Date().toISOString().split('T')[0]}.png`;
+        link.href = canvas.toDataURL();
+        link.click();
+      }
+      
+      logAnalysisRequest('export_png', { chartId, chartName });
+    } catch (error) {
+      console.error('PNG export failed:', error);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [selectedCity, logAnalysisRequest]);
+
+  const exportChartAsCSV = useCallback((chartId, chartName) => {
+    try {
+      let csvData = '';
+      
+      switch (chartId) {
+        case 'temperature-chart':
+          csvData = 'Year,Temperature,Anomaly\n';
+          climateData.forEach(d => {
+            const anomaly = d.temperature - meanTemp;
+            csvData += `${d.year},${d.temperature.toFixed(2)},${anomaly.toFixed(2)}\n`;
+          });
+          break;
+          
+        case 'extreme-weather-chart':
+          csvData = 'Year,Hot Days,Rainy Days,Total Extreme Days\n';
+          climateData.forEach(d => {
+            csvData += `${d.year},${d.hotDays || 0},${d.rainyDays || 0},${(d.hotDays || 0) + (d.rainyDays || 0)}\n`;
+          });
+          break;
+          
+        case 'seasonal-shift-chart':
+          csvData = 'Year,First Warm Day,Date\n';
+          climateData.forEach(d => {
+            const date = new Date(2024, 0, d.firstWarmDay || 90);
+            csvData += `${d.year},${d.firstWarmDay || 90},"${date.toLocaleDateString()}"\n`;
+          });
+          break;
+          
+        case 'timelapse-chart':
+          csvData = 'Year,Temperature,Anomaly,Hot Days,Rainy Days\n';
+          climateData.forEach(d => {
+            const anomaly = d.temperature - meanTemp;
+            csvData += `${d.year},${d.temperature.toFixed(2)},${anomaly.toFixed(2)},${d.hotDays || 0},${d.rainyDays || 0}\n`;
+          });
+          break;
+      }
+      
+      const blob = new Blob([csvData], { type: 'text/csv' });
+      const link = document.createElement('a');
+      link.download = `${chartName}-${selectedCity?.name || 'unknown'}-${new Date().toISOString().split('T')[0]}.csv`;
+      link.href = URL.createObjectURL(blob);
+      link.click();
+      
+      logAnalysisRequest('export_csv', { chartId, chartName });
+    } catch (error) {
+      console.error('CSV export failed:', error);
+    }
+  }, [climateData, meanTemp, selectedCity, logAnalysisRequest]);
+
+  const exportPDFReport = useCallback(async () => {
+    setIsExporting(true);
+    try {
+      // Create a comprehensive PDF report
+      const reportData = {
+        title: `Climate Analysis Report - ${selectedCity?.name || 'Unknown City'}`,
+        generatedAt: new Date().toISOString(),
+        city: selectedCity?.name || 'Unknown',
+        date: selectedDate || 'Unknown',
+        dataSource: dataError ? 'Fallback Data' : 'Real NASA Data',
+        performance: devicePerformance,
+        climateData: climateData,
+        meanTemperature: meanTemp,
+        insights: aiInsights,
+        auditLog: auditLog.slice(-10) // Last 10 entries
+      };
+      
+      // For now, export as JSON (in a real app, you'd use a PDF library like jsPDF)
+      const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
+      const link = document.createElement('a');
+      link.download = `climate-report-${selectedCity?.name || 'unknown'}-${new Date().toISOString().split('T')[0]}.json`;
+      link.href = URL.createObjectURL(blob);
+      link.click();
+      
+      logAnalysisRequest('export_pdf_report', { reportData });
+    } catch (error) {
+      console.error('PDF export failed:', error);
+    } finally {
+      setIsExporting(false);
+    }
+  }, [selectedCity, selectedDate, dataError, devicePerformance, climateData, meanTemp, aiInsights, auditLog, logAnalysisRequest]);
+
   // Load real NASA climate data
   useEffect(() => {
     if (selectedCity && selectedCity.csvFile) {
       loadClimateData();
+      logAnalysisRequest('load_climate_data', { 
+        city: selectedCity.name, 
+        csvFile: selectedCity.csvFile 
+      });
     }
-  }, [selectedCity]);
+  }, [selectedCity, logAnalysisRequest]);
 
   const loadClimateData = async () => {
     setIsLoadingData(true);
@@ -446,19 +607,37 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-900">Temperature Anomalies</h3>
-          <div className="flex items-center gap-4 text-sm text-gray-500">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
-              <span className="font-medium">Below Average Temperature</span>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 text-sm text-gray-500">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
+                <span className="font-medium">Below Average Temperature</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-red-500 rounded-full"></div>
+                <span className="font-medium">Above Average Temperature</span>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-red-500 rounded-full"></div>
-              <span className="font-medium">Above Average Temperature</span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => exportChartAsPNG('temperature-chart', 'temperature-anomalies')}
+                className="p-1 hover:bg-gray-100 rounded transition-colors"
+                title="Export as PNG"
+              >
+                <Image className="w-4 h-4 text-gray-600" />
+              </button>
+              <button
+                onClick={() => exportChartAsCSV('temperature-chart', 'temperature-anomalies')}
+                className="p-1 hover:bg-gray-100 rounded transition-colors"
+                title="Export as CSV"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-gray-600" />
+              </button>
             </div>
           </div>
         </div>
         
-        <div className="relative h-80 bg-gray-50 rounded-lg p-6">
+        <div id="temperature-chart" className="relative h-80 bg-gray-50 rounded-lg p-6">
           <svg className="w-full h-full" viewBox="0 0 500 280">
             {/* Grid lines */}
             {[0, 50, 100, 150, 200].map(y => (
@@ -600,19 +779,37 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-900">Extreme Weather Days</h3>
-          <div className="flex items-center gap-4 text-sm text-gray-500">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-orange-500 rounded-full"></div>
-              <span className="font-medium">Hot Days (&gt;35°C)</span>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 text-sm text-gray-500">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-orange-500 rounded-full"></div>
+                <span className="font-medium">Hot Days (&gt;35°C)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
+                <span className="font-medium">Heavy Rain Days (&gt;20mm)</span>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
-              <span className="font-medium">Heavy Rain Days (&gt;20mm)</span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => exportChartAsPNG('extreme-weather-chart', 'extreme-weather-days')}
+                className="p-1 hover:bg-gray-100 rounded transition-colors"
+                title="Export as PNG"
+              >
+                <Image className="w-4 h-4 text-gray-600" />
+              </button>
+              <button
+                onClick={() => exportChartAsCSV('extreme-weather-chart', 'extreme-weather-days')}
+                className="p-1 hover:bg-gray-100 rounded transition-colors"
+                title="Export as CSV"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-gray-600" />
+              </button>
             </div>
           </div>
         </div>
         
-        <div className="relative h-80 bg-gray-50 rounded-lg p-6">
+        <div id="extreme-weather-chart" className="relative h-80 bg-gray-50 rounded-lg p-6">
           <svg className="w-full h-full" viewBox="0 0 500 280">
             {/* Grid lines */}
             {[0, 50, 100, 150, 200].map(y => (
@@ -766,19 +963,37 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-gray-900">Seasonal Shift</h3>
-          <div className="flex items-center gap-4 text-sm text-gray-500">
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
-              <span className="font-medium">Early Spring (Feb-Mar)</span>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4 text-sm text-gray-500">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
+                <span className="font-medium">Early Spring (Feb-Mar)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-green-500 rounded-full"></div>
+                <span className="font-medium">Late Spring (Apr-May)</span>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-green-500 rounded-full"></div>
-              <span className="font-medium">Late Spring (Apr-May)</span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => exportChartAsPNG('seasonal-shift-chart', 'seasonal-shift')}
+                className="p-1 hover:bg-gray-100 rounded transition-colors"
+                title="Export as PNG"
+              >
+                <Image className="w-4 h-4 text-gray-600" />
+              </button>
+              <button
+                onClick={() => exportChartAsCSV('seasonal-shift-chart', 'seasonal-shift')}
+                className="p-1 hover:bg-gray-100 rounded transition-colors"
+                title="Export as CSV"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-gray-600" />
+              </button>
             </div>
           </div>
         </div>
         
-        <div className="relative h-80 bg-gray-50 rounded-lg p-6">
+        <div id="seasonal-shift-chart" className="relative h-80 bg-gray-50 rounded-lg p-6">
           <svg className="w-full h-full" viewBox="0 0 500 280">
             {/* Month markers */}
             {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'].map((month, i) => (
@@ -965,15 +1180,33 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
               </span>
             </div>
           </div>
-          <button
-            onClick={() => setIsPlaying(!isPlaying)}
-            className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition-colors"
-          >
-            {isPlaying ? 'Pause' : 'Play'}
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => exportChartAsPNG('timelapse-chart', 'climate-timelapse')}
+                className="p-1 hover:bg-gray-100 rounded transition-colors"
+                title="Export as PNG"
+              >
+                <Image className="w-4 h-4 text-gray-600" />
+              </button>
+              <button
+                onClick={() => exportChartAsCSV('timelapse-chart', 'climate-timelapse')}
+                className="p-1 hover:bg-gray-100 rounded transition-colors"
+                title="Export as CSV"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-gray-600" />
+              </button>
+            </div>
+            <button
+              onClick={() => setIsPlaying(!isPlaying)}
+              className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition-colors"
+            >
+              {isPlaying ? 'Pause' : 'Play'}
+            </button>
+          </div>
         </div>
         
-        <div className="relative h-64 bg-gray-50 rounded-lg p-6">
+        <div id="timelapse-chart" className="relative h-64 bg-gray-50 rounded-lg p-6">
           {/* Canvas for high-performance rendering */}
           <canvas
             ref={canvasRef}
@@ -1036,8 +1269,25 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
               <BarChart3 className="w-8 h-8 text-green-600" />
             </div>
             <div className="flex-1">
-              <h2 className="text-2xl font-bold text-gray-900">Climate History Dashboard</h2>
-              <p className="text-sm text-gray-500">25 years of climate data analysis (1999-2024)</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Climate History Dashboard</h2>
+                  <p className="text-sm text-gray-500">25 years of climate data analysis (1999-2024)</p>
+                </div>
+                <button
+                  onClick={exportPDFReport}
+                  disabled={isExporting}
+                  className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 transition-colors disabled:opacity-50"
+                  title="Export Full Report"
+                >
+                  {isExporting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <FileText className="w-4 h-4" />
+                  )}
+                  <span className="hidden sm:inline">Export Report</span>
+                </button>
+              </div>
               <div className="mt-2 flex flex-col sm:flex-row sm:items-center gap-2 text-xs">
                 {isLoadingData ? (
                   <div className="flex items-center gap-1 text-blue-600">
@@ -1192,6 +1442,43 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
               </div>
             )}
           </div>
+          
+          {/* Audit Trail */}
+          {auditLog.length > 0 && (
+            <div className="border-t border-gray-200 pt-6 mt-6">
+              <div className="flex items-center gap-2 mb-4">
+                <FileText className="w-5 h-5 text-gray-600" />
+                <h3 className="text-lg font-semibold text-gray-900">Analysis Log</h3>
+                <span className="text-xs text-gray-500">({auditLog.length} entries)</span>
+              </div>
+              
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 max-h-40 overflow-y-auto">
+                <div className="space-y-2 text-xs">
+                  {auditLog.slice(-10).reverse().map((entry, index) => (
+                    <div key={index} className="flex items-start gap-2 text-gray-600">
+                      <span className="text-gray-400 font-mono text-xs">
+                        {new Date(entry.timestamp).toLocaleTimeString()}
+                      </span>
+                      <span className="font-medium">{entry.action}</span>
+                      <span className="text-gray-500">
+                        {entry.city} • {entry.date}
+                      </span>
+                      {entry.details && Object.keys(entry.details).length > 0 && (
+                        <span className="text-gray-400">
+                          ({Object.entries(entry.details).map(([k, v]) => `${k}: ${v}`).join(', ')})
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="mt-2 text-xs text-gray-500">
+                <p>Analysis log tracks all user actions for reproducibility and audit purposes.</p>
+                <p>Data stored locally in browser. Last 100 entries kept.</p>
+              </div>
+            </div>
+          )}
         </div>
       </AnimatedCard>
     </div>
