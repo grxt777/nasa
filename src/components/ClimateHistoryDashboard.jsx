@@ -190,13 +190,12 @@ const ClimateHistoryDashboard = ({ weatherData, selectedCity, selectedDate }) =>
         link.click();
       }
       
-      logAnalysisRequest('export_png', { chartId, chartName });
     } catch (error) {
       console.error('PNG export failed:', error);
     } finally {
       setIsExporting(false);
     }
-  }, [selectedCity, logAnalysisRequest]);
+  }, [selectedCity]);
 
   const exportChartAsCSV = useCallback((chartId, chartName) => {
     try {
@@ -241,11 +240,10 @@ const ClimateHistoryDashboard = ({ weatherData, selectedCity, selectedDate }) =>
       link.href = URL.createObjectURL(blob);
       link.click();
       
-      logAnalysisRequest('export_csv', { chartId, chartName });
     } catch (error) {
       console.error('CSV export failed:', error);
     }
-  }, [climateData, meanTemp, selectedCity, logAnalysisRequest]);
+  }, [climateData, meanTemp, selectedCity]);
 
   const exportPDFReport = useCallback(async () => {
     setIsExporting(true);
@@ -271,24 +269,19 @@ const ClimateHistoryDashboard = ({ weatherData, selectedCity, selectedDate }) =>
       link.href = URL.createObjectURL(blob);
       link.click();
       
-      logAnalysisRequest('export_pdf_report', { reportData });
     } catch (error) {
       console.error('PDF export failed:', error);
     } finally {
       setIsExporting(false);
     }
-  }, [selectedCity, selectedDate, dataError, devicePerformance, climateData, meanTemp, aiInsights, auditLog, logAnalysisRequest]);
+  }, [selectedCity, selectedDate, dataError, devicePerformance, climateData, meanTemp, aiInsights]);
 
   // Load real NASA climate data
   useEffect(() => {
     if (selectedCity && selectedCity.csvFile) {
       loadClimateData();
-      logAnalysisRequest('load_climate_data', { 
-        city: selectedCity.name, 
-        csvFile: selectedCity.csvFile 
-      });
     }
-  }, [selectedCity, logAnalysisRequest]);
+  }, [selectedCity]);
 
   const loadClimateData = async () => {
     setIsLoadingData(true);
