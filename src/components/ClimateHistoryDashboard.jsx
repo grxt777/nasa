@@ -186,20 +186,28 @@ const ClimateHistoryDashboard = ({ weatherData, selectedCity, selectedDate }) =>
           const svgData = new XMLSerializer().serializeToString(svg);
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
-          const img = new Image();
           
-          canvas.width = svg.clientWidth;
-          canvas.height = svg.clientHeight;
+          canvas.width = svg.clientWidth || 500;
+          canvas.height = svg.clientHeight || 280;
           
+          // Use a more reliable method for SVG to Canvas conversion
+          const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+          const url = URL.createObjectURL(svgBlob);
+          
+          const img = document.createElement('img');
           img.onload = () => {
             ctx.drawImage(img, 0, 0);
             const link = document.createElement('a');
             link.download = `${chartName}-${selectedCity?.name || 'unknown'}-${new Date().toISOString().split('T')[0]}.png`;
             link.href = canvas.toDataURL();
             link.click();
+            URL.revokeObjectURL(url);
           };
-          
-          img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
+          img.onerror = () => {
+            console.error('Failed to load SVG for PNG export');
+            URL.revokeObjectURL(url);
+          };
+          img.src = url;
         }
       } else {
         const link = document.createElement('a');
@@ -1133,11 +1141,11 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
         ctx.fillText(currentYear.toString(), x, y - 15);
       }
       
-      // Draw performance indicator
-      ctx.fillStyle = devicePerformance === 'low' ? '#ef4444' : devicePerformance === 'medium' ? '#f59e0b' : '#10b981';
-      ctx.font = '10px system-ui';
-      ctx.textAlign = 'right';
-      ctx.fillText(`${devicePerformance} perf`, width - 10, 20);
+      // Draw performance indicator (removed to avoid visual artifacts)
+      // ctx.fillStyle = devicePerformance === 'low' ? '#ef4444' : devicePerformance === 'medium' ? '#f59e0b' : '#10b981';
+      // ctx.font = '10px system-ui';
+      // ctx.textAlign = 'right';
+      // ctx.fillText(`${devicePerformance} perf`, width - 10, 20);
     }, [climateData, currentYear, devicePerformance]);
     
     useEffect(() => {

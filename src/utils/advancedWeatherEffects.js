@@ -203,6 +203,12 @@ class AdvancedWeatherEffectsRenderer {
       return;
     }
 
+    // Проверяем, что карта полностью инициализирована
+    if (!this.map || !this.map._loaded || !this.map.getContainer()) {
+      console.warn('Map not ready for weather effects');
+      return;
+    }
+
     const coords = this.cityCoordinates[this.currentCity];
     if (!coords) {
       // console.log('❌ No coordinates for city:', this.currentCity);
@@ -210,8 +216,14 @@ class AdvancedWeatherEffectsRenderer {
     }
 
     // Проверяем, что карта инициализирована
-    if (!this.map || !this.map.getContainer()) {
+    if (!this.map || !this.map.getContainer() || !this.map._loaded) {
       // console.log('❌ Map not initialized');
+      return;
+    }
+
+    // Дополнительная проверка на наличие необходимых методов карты
+    if (typeof this.map.latLngToContainerPoint !== 'function') {
+      console.warn('Map latLngToContainerPoint method not available');
       return;
     }
 
