@@ -1089,17 +1089,14 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
       // Clear canvas
       ctx.clearRect(0, 0, width, height);
       
-      // Draw background gradient (more subtle)
-      const gradient = ctx.createLinearGradient(0, 0, width, height);
-      gradient.addColorStop(0, '#f8fafc');
-      gradient.addColorStop(1, '#e2e8f0');
-      ctx.fillStyle = gradient;
+      // Draw subtle background
+      ctx.fillStyle = '#f8fafc';
       ctx.fillRect(0, 0, width, height);
       
-      // Draw temperature line (adjusted for smaller canvas)
+      // Draw temperature line (subtle background)
       ctx.beginPath();
-      ctx.strokeStyle = '#3b82f6';
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(59, 130, 246, 0.3)';
+      ctx.lineWidth = 1;
       ctx.lineCap = 'round';
       
       climateData.forEach((d, i) => {
@@ -1116,30 +1113,7 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
       });
       ctx.stroke();
       
-      // Draw current year indicator (adjusted for smaller canvas)
-      const currentIndex = climateData.findIndex(d => d.year === currentYear);
-      if (currentIndex !== -1) {
-        const x = (currentIndex / Math.max(climateData.length - 1, 1)) * width;
-        const currentData = climateData[currentIndex];
-        const normalizedTemp = (currentData.temperature - Math.min(...climateData.map(d => d.temperature))) / 
-                              Math.max(Math.max(...climateData.map(d => d.temperature)) - Math.min(...climateData.map(d => d.temperature)), 1);
-        const y = height - (normalizedTemp * height * 0.4 + height * 0.3);
-        
-        // Draw indicator circle (smaller)
-        ctx.beginPath();
-        ctx.arc(x, y, 4, 0, 2 * Math.PI);
-        ctx.fillStyle = '#ef4444';
-        ctx.fill();
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        
-        // Draw year label (smaller font)
-        ctx.fillStyle = '#374151';
-        ctx.font = 'bold 10px system-ui';
-        ctx.textAlign = 'center';
-        ctx.fillText(currentYear.toString(), x, y - 8);
-      }
+      // No current year indicator in background canvas
       
       // Draw performance indicator (removed to avoid visual artifacts)
       // ctx.fillStyle = devicePerformance === 'low' ? '#ef4444' : devicePerformance === 'medium' ? '#f59e0b' : '#10b981';
@@ -1215,22 +1189,22 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
         </div>
         
         <div id="timelapse-chart" className="relative h-64 bg-gray-50 rounded-lg p-6">
-          {/* Canvas for high-performance rendering */}
+          {/* Background Canvas - positioned behind everything */}
           <canvas
             ref={canvasRef}
             width={400}
             height={150}
-            className="absolute inset-0 rounded-lg"
+            className="absolute bottom-6 left-6 right-6 rounded-lg"
             style={{ 
-              width: '100%', 
-              height: '100%',
+              width: 'calc(100% - 3rem)', 
+              height: '120px',
               objectFit: 'contain',
-              zIndex: 1
+              zIndex: 0
             }}
           />
           
-          {/* Overlay data cards */}
-          <div className="absolute top-4 left-4 right-4 z-10">
+          {/* Data cards - positioned above canvas */}
+          <div className="relative z-10 h-full flex flex-col justify-center">
             <div className="text-center mb-4">
               <div className="text-2xl font-bold text-blue-600">{currentYear}</div>
             </div>
