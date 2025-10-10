@@ -1062,12 +1062,10 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
     );
   };
 
-  // Canvas-based Time-Lapse Animation Component
+  // Simple Time-Lapse Animation Component
   const TimeLapseAnimation = () => {
     const [currentYear, setCurrentYear] = useState(1999);
     const [isPlaying, setIsPlaying] = useState(false);
-    const canvasRef = useRef(null);
-    const animationRef = useRef(null);
     
     // Optimized animation interval based on device performance
     const getAnimationInterval = useCallback(() => {
@@ -1077,54 +1075,6 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
         default: return 200; // 5 FPS
       }
     }, [devicePerformance]);
-    
-    // Canvas rendering function
-    const renderCanvas = useCallback(() => {
-      const canvas = canvasRef.current;
-      if (!canvas || climateData.length === 0) return;
-      
-      const ctx = canvas.getContext('2d');
-      const { width, height } = canvas;
-      
-      // Clear canvas
-      ctx.clearRect(0, 0, width, height);
-      
-      // Draw subtle background
-      ctx.fillStyle = '#f8fafc';
-      ctx.fillRect(0, 0, width, height);
-      
-      // Draw temperature line (subtle background)
-      ctx.beginPath();
-      ctx.strokeStyle = 'rgba(59, 130, 246, 0.3)';
-      ctx.lineWidth = 1;
-      ctx.lineCap = 'round';
-      
-      climateData.forEach((d, i) => {
-        const x = (i / Math.max(climateData.length - 1, 1)) * width;
-        const normalizedTemp = (d.temperature - Math.min(...climateData.map(d => d.temperature))) / 
-                              Math.max(Math.max(...climateData.map(d => d.temperature)) - Math.min(...climateData.map(d => d.temperature)), 1);
-        const y = height - (normalizedTemp * height * 0.4 + height * 0.3);
-        
-        if (i === 0) {
-          ctx.moveTo(x, y);
-        } else {
-          ctx.lineTo(x, y);
-        }
-      });
-      ctx.stroke();
-      
-      // No current year indicator in background canvas
-      
-      // Draw performance indicator (removed to avoid visual artifacts)
-      // ctx.fillStyle = devicePerformance === 'low' ? '#ef4444' : devicePerformance === 'medium' ? '#f59e0b' : '#10b981';
-      // ctx.font = '10px system-ui';
-      // ctx.textAlign = 'right';
-      // ctx.fillText(`${devicePerformance} perf`, width - 10, 20);
-    }, [climateData, currentYear, devicePerformance]);
-    
-    useEffect(() => {
-      renderCanvas();
-    }, [renderCanvas]);
     
     useEffect(() => {
       if (isPlaying) {
@@ -1188,44 +1138,28 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
           </div>
         </div>
         
-        <div id="timelapse-chart" className="relative h-64 bg-gray-50 rounded-lg p-6">
-          {/* Background Canvas - positioned behind everything */}
-          <canvas
-            ref={canvasRef}
-            width={400}
-            height={150}
-            className="absolute bottom-6 left-6 right-6 rounded-lg"
-            style={{ 
-              width: 'calc(100% - 3rem)', 
-              height: '120px',
-              objectFit: 'contain',
-              zIndex: 0
-            }}
-          />
-          
-          {/* Data cards - positioned above canvas */}
-          <div className="relative z-10 h-full flex flex-col justify-center">
-            <div className="text-center mb-4">
-              <div className="text-2xl font-bold text-blue-600">{currentYear}</div>
-            </div>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div className="bg-white/95 backdrop-blur-sm p-2 rounded-lg shadow-sm border border-gray-200">
+        <div id="timelapse-chart" className="bg-gray-50 rounded-lg p-6">
+          {/* Data cards */}
+          <div className="text-center mb-6">
+            <div className="text-3xl font-bold text-blue-600 mb-4">{currentYear}</div>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
                 <div className="text-gray-500">Temperature</div>
-                <div className="text-lg font-semibold">{(currentData?.temperature || 0).toFixed(1)}°C</div>
+                <div className="text-xl font-semibold">{(currentData?.temperature || 0).toFixed(1)}°C</div>
               </div>
-              <div className="bg-white/95 backdrop-blur-sm p-2 rounded-lg shadow-sm border border-gray-200">
+              <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
                 <div className="text-gray-500">Anomaly</div>
-                <div className={`text-lg font-semibold ${anomaly > 0 ? 'text-red-500' : 'text-blue-500'}`}>
+                <div className={`text-xl font-semibold ${anomaly > 0 ? 'text-red-500' : 'text-blue-500'}`}>
                   {anomaly > 0 ? '+' : ''}{anomaly.toFixed(1)}°C
                 </div>
               </div>
-              <div className="bg-white/95 backdrop-blur-sm p-2 rounded-lg shadow-sm border border-gray-200">
+              <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
                 <div className="text-gray-500">Hot Days</div>
-                <div className="text-lg font-semibold text-orange-500">{currentData?.hotDays || 0}</div>
+                <div className="text-xl font-semibold text-orange-500">{currentData?.hotDays || 0}</div>
               </div>
-              <div className="bg-white/95 backdrop-blur-sm p-2 rounded-lg shadow-sm border border-gray-200">
+              <div className="bg-white p-3 rounded-lg shadow-sm border border-gray-200">
                 <div className="text-gray-500">Rainy Days</div>
-                <div className="text-lg font-semibold text-blue-500">{currentData?.rainyDays || 0}</div>
+                <div className="text-xl font-semibold text-blue-500">{currentData?.rainyDays || 0}</div>
               </div>
             </div>
           </div>
