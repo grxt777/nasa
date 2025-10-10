@@ -11,11 +11,12 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-const LeafletMap = ({ selectedCity, onCitySelect, cities, weatherData }) => {
+const LeafletMap = ({ selectedCity, onCitySelect, cities, weatherData, onMapClick, isWaitingForMapClick }) => {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef([]);
   const effectsRendererRef = useRef(null);
+  const userMarkerRef = useRef(null);
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -59,6 +60,7 @@ const LeafletMap = ({ selectedCity, onCitySelect, cities, weatherData }) => {
     map.on('drag', clampLatitude);
     map.on('moveend', clampLatitude);
     map.on('zoomend', clampLatitude);
+
 
 
     // Add base OSM layer
@@ -182,11 +184,22 @@ const LeafletMap = ({ selectedCity, onCitySelect, cities, weatherData }) => {
       cityCoordinates[city.name] = [city.lat, city.lng];
     });
 
-    // Initialize renderer (advanced version with 3D effects)
-    effectsRendererRef.current = new AdvancedWeatherEffectsRenderer(
-      mapInstanceRef.current,
-      cityCoordinates
-    );
+    // Wait for map to be fully loaded before initializing effects
+    const initializeEffects = () => {
+      if (mapInstanceRef.current && mapInstanceRef.current._loaded) {
+        // Initialize renderer (advanced version with 3D effects)
+        effectsRendererRef.current = new AdvancedWeatherEffectsRenderer(
+          mapInstanceRef.current,
+          cityCoordinates
+        );
+      } else {
+        // Retry after map loads
+        setTimeout(initializeEffects, 100);
+      }
+    };
+
+    // Start initialization
+    initializeEffects();
 
     return () => {
       if (effectsRendererRef.current) {
@@ -197,11 +210,12 @@ const LeafletMap = ({ selectedCity, onCitySelect, cities, weatherData }) => {
 
   // Render weather effects when city or weather data changes
   useEffect(() => {
+    // Always stop effects when city changes or no data
+    if (effectsRendererRef.current) {
+      effectsRendererRef.current.stopEffects();
+    }
+
     if (!effectsRendererRef.current || !selectedCity || !weatherData) {
-      // Stop effects if no data
-      if (effectsRendererRef.current) {
-        effectsRendererRef.current.stopEffects();
-      }
       return;
     }
 
@@ -215,11 +229,20 @@ const LeafletMap = ({ selectedCity, onCitySelect, cities, weatherData }) => {
       comfortScore: weatherData.comfort?.score || 5
     };
 
-    // console.log('🌤️ Weather effects data:', effectsData);
-    // console.log('🏙️ Selected city:', selectedCity.name);
+    // Start effects with delay to ensure map is fully initialized
+    const startEffectsWithDelay = () => {
+      try {
+        // Проверяем готовность карты перед запуском эффектов
+        if (mapInstanceRef.current && effectsRendererRef.current) {
+          effectsRendererRef.current.renderWeatherEffects(selectedCity.name, effectsData);
+        }
+      } catch (error) {
+        console.error('Error starting weather effects:', error);
+      }
+    };
 
-    // Start effects
-    effectsRendererRef.current.renderWeatherEffects(selectedCity.name, effectsData);
+    // Add longer delay to ensure map is fully ready
+    setTimeout(startEffectsWithDelay, 500);
 
     // Update tooltip of selected city with weather data
     if (markersRef.current.length > 0) {
@@ -244,9 +267,73 @@ const LeafletMap = ({ selectedCity, onCitySelect, cities, weatherData }) => {
     }
   }, [selectedCity, weatherData, cities]);
 
+  // Handle map clicks for city selection
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+
+    const handleMapClick = (e) => {
+      if (isWaitingForMapClick) {
+        // Remove existing user marker
+        if (userMarkerRef.current) {
+          mapInstanceRef.current.removeLayer(userMarkerRef.current);
+        }
+        
+        // Create custom marker for user selection
+        const userMarker = L.marker([e.latlng.lat, e.latlng.lng], {
+          icon: L.divIcon({
+            className: 'user-marker',
+            html: '<div style="background-color: #ef4444; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+            iconSize: [20, 20],
+            iconAnchor: [10, 10]
+          })
+        }).addTo(mapInstanceRef.current);
+        
+        // Add tooltip
+        userMarker.bindTooltip('Selected location', {
+          permanent: true,
+          direction: 'top',
+          offset: [0, -10]
+        });
+        
+        userMarkerRef.current = userMarker;
+        
+        // Call the callback with coordinates
+        if (onMapClick) {
+          onMapClick(e.latlng.lat, e.latlng.lng);
+        }
+      }
+    };
+
+    mapInstanceRef.current.on('click', handleMapClick);
+
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.off('click', handleMapClick);
+      }
+    };
+  }, [isWaitingForMapClick, onMapClick]);
+
+  // Clean up user marker when waiting mode changes
+  useEffect(() => {
+    if (!isWaitingForMapClick && userMarkerRef.current && mapInstanceRef.current) {
+      mapInstanceRef.current.removeLayer(userMarkerRef.current);
+      userMarkerRef.current = null;
+    }
+  }, [isWaitingForMapClick]);
+
   return (
-    <div className="w-full max-w-full h-64 sm:h-72 md:h-80 lg:h-96 xl:h-[500px] rounded-lg overflow-hidden border border-blue-100 shadow-md">
+    <div className="relative w-full max-w-full h-64 sm:h-72 md:h-80 lg:h-96 xl:h-[500px] rounded-lg overflow-hidden border border-blue-100 shadow-md">
       <div ref={mapRef} className="w-full h-full" style={{ maxWidth: '100%' }} />
+      
+      {/* Map Click Mode Indicator */}
+      {isWaitingForMapClick && (
+        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg z-10">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+            <span className="text-sm font-medium">Click on map to place marker</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

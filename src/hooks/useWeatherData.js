@@ -30,7 +30,7 @@ export const useWeatherData = () => {
       
       const weatherDataResult = await nasaDataService.getWeatherDataForDate(
         city.name, 
-        city.csvFile, 
+        null, // Файл будет найден автоматически
         selectedDate,
         5 // ±5 day window for better calculation
       );
@@ -57,7 +57,7 @@ export const useWeatherData = () => {
       setLoadingProgress(80);
       setLoadingStage('Построение графиков...');
       
-      const allCityData = await nasaDataService.loadCityData(city.name, city.csvFile);
+      const allCityData = await nasaDataService.loadCityData(city.name, null);
       const trends = generateTrendData(allCityData, variable);
       setTrendData(trends);
       

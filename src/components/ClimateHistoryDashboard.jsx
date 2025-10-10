@@ -278,7 +278,7 @@ const ClimateHistoryDashboard = ({ weatherData, selectedCity, selectedDate }) =>
 
   // Load real NASA climate data
   useEffect(() => {
-    if (selectedCity && selectedCity.csvFile) {
+    if (selectedCity) {
       loadClimateData();
     }
   }, [selectedCity]);
@@ -288,12 +288,10 @@ const ClimateHistoryDashboard = ({ weatherData, selectedCity, selectedDate }) =>
     setDataError('');
     
     try {
-      const csvFileName = selectedCity.csvFile;
-      if (!csvFileName) {
-        throw new Error('No CSV file specified for this city');
-      }
+      console.log('🌡️ Загрузка климатических данных для:', selectedCity.name);
+      const allData = await nasaDataService.loadCityData(selectedCity.name, null);
       
-      const allData = await nasaDataService.loadCityData(selectedCity.name, csvFileName);
+      console.log('📊 Загружено записей:', allData.length);
       
       if (!allData || !Array.isArray(allData) || allData.length === 0) {
         throw new Error('No climate data available for this city');
@@ -302,12 +300,16 @@ const ClimateHistoryDashboard = ({ weatherData, selectedCity, selectedDate }) =>
       // Process NASA data to extract yearly statistics
       const yearlyData = processNASAData(allData);
       
+      console.log('📈 Обработано годовых данных:', yearlyData.length);
+      
       if (!yearlyData || !Array.isArray(yearlyData) || yearlyData.length === 0) {
         throw new Error('Failed to process climate data');
       }
       
       setClimateData(yearlyData);
+      console.log('✅ Климатические данные успешно загружены');
     } catch (error) {
+      console.error('❌ Ошибка загрузки климатических данных:', error);
       setDataError(`Error loading climate data: ${error.message}`);
       // Fallback to mock data if real data fails
       setClimateData(generateMockData());
@@ -318,6 +320,9 @@ const ClimateHistoryDashboard = ({ weatherData, selectedCity, selectedDate }) =>
 
   // Process NASA CSV data to extract yearly climate statistics
   const processNASAData = (rawData) => {
+    console.log('🔄 Обработка NASA данных, записей:', rawData.length);
+    console.log('📋 Пример записи:', rawData[0]);
+    
     const yearlyStats = {};
     
     rawData.forEach((record, index) => {
@@ -355,10 +360,12 @@ const ClimateHistoryDashboard = ({ weatherData, selectedCity, selectedDate }) =>
           }
           
           // Track first warm day (>20°C)
-          if (tempMax > 20 && yearlyStats[year].firstWarmDay === null) {
+          if (tempMax > 20) {
             const doy = parseInt(record.DOY);
             if (!isNaN(doy) && doy > 0 && doy <= 366) {
-              yearlyStats[year].firstWarmDay = doy;
+              if (yearlyStats[year].firstWarmDay === null || doy < yearlyStats[year].firstWarmDay) {
+                yearlyStats[year].firstWarmDay = doy;
+              }
             }
           }
         }
@@ -392,10 +399,13 @@ const ClimateHistoryDashboard = ({ weatherData, selectedCity, selectedDate }) =>
         precipitation: avgPrecip,
         hotDays: yearData.hotDays,
         rainyDays: yearData.rainyDays,
-        firstWarmDay: yearData.firstWarmDay || 90, // Default to day 90 if no warm day found
+        firstWarmDay: yearData.firstWarmDay || null, // Keep null if no warm day found
         monthlyTemps: [] // Will be calculated separately if needed
       };
     });
+    
+    console.log('📊 Обработано годов:', climateData.length);
+    console.log('📈 Пример обработанных данных:', climateData.slice(0, 3));
     
     return climateData.sort((a, b) => a.year - b.year);
   };
@@ -915,11 +925,13 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
       );
     }
 
-    const earliestDay = Math.min(...climateData.map(d => d.firstWarmDay));
-    const latestDay = Math.max(...climateData.map(d => d.firstWarmDay));
+    // Filter out null values and calculate range
+    const validWarmDays = climateData
+      .map(d => d.firstWarmDay)
+      .filter(day => day !== null && !isNaN(day));
     
-    if (isNaN(earliestDay) || isNaN(latestDay) || earliestDay === latestDay) {
-      console.warn('Invalid seasonal shift data:', { earliestDay, latestDay });
+    if (validWarmDays.length === 0) {
+      console.warn('No valid warm days found in climate data');
       return (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
@@ -927,7 +939,26 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
           </div>
           <div className="h-80 bg-gray-50 rounded-lg flex items-center justify-center">
             <div className="text-center">
-              <p className="text-gray-600">Invalid data for visualization</p>
+              <p className="text-gray-600">No warm days (>20°C) found in climate data</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    const earliestDay = Math.min(...validWarmDays);
+    const latestDay = Math.max(...validWarmDays);
+    
+    if (earliestDay === latestDay) {
+      console.warn('No seasonal variation in warm days:', { earliestDay, latestDay });
+      return (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-900">Seasonal Shift</h3>
+          </div>
+          <div className="h-80 bg-gray-50 rounded-lg flex items-center justify-center">
+            <div className="text-center">
+              <p className="text-gray-600">No seasonal variation in warm days found</p>
             </div>
           </div>
         </div>
@@ -1168,7 +1199,7 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
                   {isExporting ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                    <FileText className="w-4 h-4" />
+                    <Download className="w-4 h-4" />
                   )}
                   <span className="hidden sm:inline">Export Report</span>
                 </button>

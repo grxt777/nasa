@@ -22,6 +22,9 @@ function App() {
   const [selectedEvent, setSelectedEvent] = useState('');
   // Sidebar closed by default on mobile, open on desktop
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+  const [isWaitingForMapClick, setIsWaitingForMapClick] = useState(false);
+  const [markerCoordinates, setMarkerCoordinates] = useState(null);
   const [selectedVariable, setSelectedVariable] = useState('T2M_MAX');
 
   const {
@@ -38,10 +41,22 @@ function App() {
   // Automatic sidebar management on window resize
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth >= 1024) {
+      const currentWidth = window.innerWidth;
+      const currentHeight = window.innerHeight;
+      
+      // Определяем, открыта ли клавиатура
+      const keyboardThreshold = window.screen.height * 0.75;
+      const keyboardOpen = currentHeight < keyboardThreshold;
+      setIsKeyboardOpen(keyboardOpen);
+      
+      // Управление сайдбаром
+      if (currentWidth >= 1024) {
         setSidebarOpen(true);
-      } else {
-        setSidebarOpen(false);
+      } else if (currentWidth < 1024) {
+        // Закрываем сайдбар только если клавиатура не открыта
+        if (!keyboardOpen) {
+          setSidebarOpen(false);
+        }
       }
     };
 
@@ -50,21 +65,77 @@ function App() {
   }, []);
 
   const handleCitySelect = (city) => {
+    // Сбрасываем все данные при выборе нового города
+    resetData();
     setSelectedCity(city);
+    setSelectedDate('');
+    setSelectedEvent('');
   };
 
   const handleDateChange = (date) => {
+    // Сбрасываем данные при изменении даты
+    resetData();
     setSelectedDate(date);
   };
 
   const handleEventChange = (event) => {
+    // Сбрасываем данные при изменении события
+    resetData();
     setSelectedEvent(event);
   };
 
   const handleVariableChange = (variable) => {
+    // Сбрасываем данные при изменении переменной
+    resetData();
     setSelectedVariable(variable);
     if (selectedCity && selectedDate) {
       analyzeWeatherData(selectedCity, selectedDate, variable);
+    }
+  };
+
+  const handleMapClick = (lat, lng) => {
+    if (isWaitingForMapClick) {
+      // Store coordinates for later confirmation
+      setMarkerCoordinates({ lat, lng });
+    }
+  };
+
+  const handleMapCoordinates = async (lat, lng) => {
+    try {
+      // Use reverse geocoding to get city name
+      const response = await fetch(
+        `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`
+      );
+      const data = await response.json();
+      
+      if (data.city) {
+        // Search for city in our database
+        const foundCity = cities.find(city => 
+          city.name.toLowerCase() === data.city.toLowerCase() ||
+          city.name.toLowerCase().includes(data.city.toLowerCase()) ||
+          data.city.toLowerCase().includes(city.name.toLowerCase())
+        );
+
+        if (foundCity) {
+          handleCitySelect(foundCity);
+        } else {
+          alert(`Город "${data.city}" не найден в нашей базе данных. Скоро добавим этот город!`);
+        }
+      } else {
+        alert('Не удалось определить город по координатам');
+      }
+    } catch (error) {
+      console.error('Error reverse geocoding:', error);
+      alert('Ошибка при определении города');
+    }
+    
+    setIsWaitingForMapClick(false);
+    setMarkerCoordinates(null);
+  };
+
+  const handleConfirmMarker = async () => {
+    if (markerCoordinates) {
+      await handleMapCoordinates(markerCoordinates.lat, markerCoordinates.lng);
     }
   };
 
@@ -235,7 +306,7 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Mobile Overlay */}
-      {sidebarOpen && (
+      {sidebarOpen && !isKeyboardOpen && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
           onClick={() => setSidebarOpen(false)}
@@ -261,6 +332,10 @@ function App() {
           loadingStage={loadingStage}
           hasData={hasData}
           onClose={() => setSidebarOpen(false)}
+          isWaitingForMapClick={isWaitingForMapClick}
+          onMapClickModeChange={setIsWaitingForMapClick}
+          onConfirmMarker={handleConfirmMarker}
+          markerCoordinates={markerCoordinates}
         />
       </div>
 
@@ -285,6 +360,10 @@ function App() {
             loadingStage={loadingStage}
             hasData={hasData}
             onClose={() => setSidebarOpen(false)}
+            isWaitingForMapClick={isWaitingForMapClick}
+            onMapClickModeChange={setIsWaitingForMapClick}
+            onConfirmMarker={handleConfirmMarker}
+            markerCoordinates={markerCoordinates}
           />
         </div>
 
@@ -354,6 +433,8 @@ function App() {
                   onCitySelect={handleCitySelect}
                   cities={cities}
                   weatherData={weatherData}
+                  onMapClick={handleMapClick}
+                  isWaitingForMapClick={isWaitingForMapClick}
                 />
               )}
             </div>
@@ -361,7 +442,6 @@ function App() {
 
             {/* Weather Cards */}
             <div className="mb-4 sm:mb-6">
-              <h2 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2 sm:mb-4">Weather Indicators</h2>
               {isLoading ? (
                 <LoadingSkeleton type="card" count={6} />
               ) : hasData ? (
@@ -373,7 +453,7 @@ function App() {
                 />
               ) : (
                 <div className="text-center py-8 text-gray-500">
-                  Select a city and date to view weather indicators
+                  
                 </div>
               )}
             </div>

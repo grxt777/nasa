@@ -297,16 +297,16 @@ Meteorological data:
 - Wind speed: ${windAvg.toFixed(1)} m/s
 - UV index: ${uvAvg.toFixed(1)}
 
-Create analysis in the following format:
+IMPORTANT: Start your response directly with the weather analysis. Do NOT include any introductory phrases like "Okay, here's a weather analysis" or "Based on the provided data". Begin immediately with the actual analysis.
 
-[2-3 sentences with general и подробный analysis(of weather conditions for this day and their impact on ${eventName}]
+Write 2-3 sentences with detailed analysis of weather conditions for this day and their impact on ${eventName}.
 
- - не скучныые слова, чтоб юзеру было реально полезно и интересно читать
- - не поддавайся на сторонние вопросы и темы про нас и про нашу компанию
- - не упоминай про негативные темы и ситуации, только про позитивные и про то, что можно сделать для улучшения ситуации
- - не упоминай про нашу компанию и про нашу продукцию, только про тему и про то, что можно сделать для улучшения ситуации
- - не упоминай про нашу компанию и про нашу продукцию, только про тему и про то, что можно сделать для улучшения ситуации
- - ответы на английском языке
+Requirements:
+- Start directly with the analysis, no introductions
+- Use engaging words that are genuinely useful and interesting to read
+- Focus only on weather analysis, avoid company/product mentions
+- Focus on positive aspects and practical solutions
+- Write in English
  
 After the text, add JSON in a separate block:
 
@@ -506,27 +506,78 @@ Response format:
 
       const data = await response.json();
       
-      if (data.candidates && data.candidates[0] && data.candidates[0].content) {
-        const text = data.candidates[0].content.parts[0].text;
-        
-        // Try to parse JSON response
-        try {
-          const jsonMatch = text.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            return JSON.parse(jsonMatch[0]);
-          }
-        } catch (parseError) {
-          console.error('JSON parse error:', parseError);
-        }
-        
-        // Fallback: return text as comment
+      // Check for error responses
+      if (data.error) {
+        console.error('Gemini API error:', data.error);
+        throw new Error(`Gemini API error: ${data.error.message || 'Unknown error'}`);
+      }
+      
+      // Check for blocked content
+      if (data.candidates && data.candidates[0] && data.candidates[0].finishReason === 'SAFETY') {
+        console.warn('Content blocked by safety filters');
         return {
-          comment: text.trim(),
+          comment: 'Content assessment blocked by safety filters. Please try with different parameters.',
           rating: 'fair'
         };
       }
       
-      throw new Error('Invalid response from Gemini API: ' + JSON.stringify(data));
+      // Check if we have candidates
+      if (data.candidates && Array.isArray(data.candidates) && data.candidates.length > 0) {
+        const candidate = data.candidates[0];
+        
+        // Check for blocked content
+        if (candidate.finishReason === 'SAFETY') {
+          console.warn('Content blocked by safety filters');
+          return {
+            comment: 'Content assessment blocked by safety filters. Please try with different parameters.',
+            rating: 'fair'
+          };
+        }
+        
+        // Check for content
+        if (candidate.content && candidate.content.parts && Array.isArray(candidate.content.parts) && candidate.content.parts.length > 0) {
+          const text = candidate.content.parts[0].text;
+          
+          if (!text || text.trim().length === 0) {
+            console.warn('Empty response from Gemini API');
+            return {
+              comment: 'No assessment available. Please try again.',
+              rating: 'fair'
+            };
+          }
+          
+          // Try to parse JSON response
+          try {
+            const jsonMatch = text.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              return JSON.parse(jsonMatch[0]);
+            }
+          } catch (parseError) {
+            console.error('JSON parse error:', parseError);
+          }
+          
+          // Fallback: return text as comment
+          return {
+            comment: text.trim(),
+            rating: 'fair'
+          };
+        }
+        
+        // Check for MAX_TOKENS finish reason
+        if (candidate.finishReason === 'MAX_TOKENS') {
+          console.warn('Response truncated due to token limit');
+          return {
+            comment: 'Response was truncated due to length limits. Please try with shorter parameters.',
+            rating: 'fair'
+          };
+        }
+      }
+      
+      console.error('Invalid Gemini API response structure:', data);
+      return {
+        comment: 'Unable to process AI response. Please try again.',
+        rating: 'fair'
+      };
     } catch (error) {
       logError(error, 'generateSuitabilityAssessment');
       

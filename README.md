@@ -1,199 +1,233 @@
-# Weather Analysis App - NASA Data
+# NASA SmartWeather
 
-A comprehensive weather analysis application that uses historical NASA weather data to provide detailed climate analysis and predictions for specific dates and locations.
+Интеллектуальная система анализа погодных данных на основе 25-летних наблюдений NASA с использованием искусственного интеллекта.
 
-## Features
+## Описание проекта
 
-### 🗺️ Interactive Map
-- Interactive map with markers for available cities
-- Click on city markers to select location
-- Hover tooltips for city information
-- Real-time city selection
+NASA SmartWeather - это веб-приложение для анализа исторических погодных данных и прогнозирования погодных условий для различных городов мира. Система использует данные NASA за период с 1999 по 2024 год и предоставляет детальный анализ с помощью AI-ассистента.
 
-### 📊 Weather Information Cards (6 Cards)
-1. **Temperature** - Average value with min/max range and trend indicator
-2. **Precipitation** - Rain probability percentage with average precipitation
-3. **Humidity** - Average humidity percentage with min/max range
-4. **Wind** - Average wind speed with maximum recorded
-5. **UV Index** - Solar radiation level with maximum values
-6. **Overall Assessment** - Comfort score from 0-10 with interpretation
+## Основные функции
 
-### 📈 Trends Graph
-- Line chart showing climate variable changes over years
-- Variable selector (temperature, humidity, wind, precipitation, UV)
-- Trend line with confidence intervals
-- Statistical analysis (average, trend direction)
-- Period analysis (1999-2024)
+### 1. Интерактивная карта
+- Отображение выбранного города на карте мира
+- Возможность выбора города кликом по карте
+- Визуальные погодные эффекты на карте
+- Маркеры для точного позиционирования
 
-### 🤖 AI Analysis Panel
-- **Summary** - 2-3 sentences about climate conditions
-- **Recommendations** - 1-3 practical tips with priority icons
-- **Comfort Assessment** - Large numerical score with interpretation
-- **Risk Factors** - List of potential risks with probabilities
-- **Alternative Dates** - Best alternative periods if current date is risky
-- **Gemini AI Integration** - Real AI-powered suggestions and feedback
+### 2. Поиск и выбор города
+- Поиск городов по названию и стране
+- Динамический поиск файлов данных NASA
+- Выбор города с карты с помощью метки
+- Поддержка более 50 городов по всему миру
 
-### 🎛️ Left Sidebar Controls
-- **City Selection** - Dropdown with 20+ available cities
-- **Date Picker** - Single date selection (converts to Day of Year)
-- **Action Buttons**:
-  - "Показать результаты" - Main analysis button
-  - "Скачать CSV" - Export tabular data
-  - "Скачать JSON" - Export full report
-  - "Сбросить" - Reset all selections
+### 3. Погодные карточки
+Система отображает 6 основных метрик:
 
-## How It Works
+**Температура максимальная**
+- Средняя максимальная температура за выбранный период
+- Расчет на основе данных T2M_MAX из NASA
+- Отображение в градусах Цельсия
 
-1. **User selects a city** (e.g., "Moscow") and date (e.g., "July 15")
-2. **System converts date to Day of Year** (DOY = 196 for July 15)
-3. **Filters NASA dataset** by CITY = "Moscow" and DOY = 196 for all available years
-4. **Calculates metrics** based on the filtered sample (e.g., 25 records for 25 years)
-5. **Displays comprehensive analysis** with AI insights and recommendations
+**Температура минимальная**
+- Средняя минимальная температура за выбранный период
+- Расчет на основе данных T2M_MIN из NASA
+- Показывает самые холодные дни
 
-## Data Source
+**Влажность**
+- Средняя относительная влажность воздуха
+- Расчет на основе данных RH2M из NASA
+- Отображается в процентах
 
-- **NASA Weather Data**: 1999-2024 historical weather data (25+ years)
-- **Cities Available**: 50+ cities worldwide including:
-  - **Major World Cities**: London, New York, Tokyo, Paris, Sydney, Beijing, Cairo, Delhi, Dubai, Istanbul, Madrid, Rome, Seoul, Bangkok, Mexico City, Buenos Aires, Chicago, Los Angeles, Oslo, Reykjavik
-  - **European Cities**: Berlin, Moscow (using Berlin data)
-  - **Asian Cities**: Almaty, Andijan, Bishkek, Bukhara, Fergana, Jizzakh, Kargil, Karshi, Namangan, Navoi, Nukus, Samarkand, Tashkent, Termez, Urgench, Zarafshan
-  - **African Cities**: Nairobi, Dori, Lodwar
-  - **Middle Eastern Cities**: Doha
-  - **Arctic/Extreme Climate Cities**: Barrow (Utqiagvik), Churchill, Haines Junction, Kiruna, Norilsk, Puerto Williams
-  - **Desert Cities**: Atar, Dalanzadgad
-  - **Tropical Cities**: Chachapoyas, Leticia, Funafuti, Nuku'alofa, Port Vila
-  - **Mountain Cities**: Goris, Gulistan
+**Осадки**
+- Среднее количество осадков за период
+- Расчет на основе данных PRECTOTCORR из NASA
+- Отображается в миллиметрах
 
-- **Data Points**: Daily weather measurements including:
-  - Temperature (max/min/average)
-  - Precipitation (corrected)
-  - Relative humidity
-  - Wind speed
-  - UV index
-  - Geographic coordinates (lat/lon)
-  - Day of Year (DOY)
-  - Year
+**Скорость ветра**
+- Средняя скорость ветра за период
+- Расчет на основе данных WS2M из NASA
+- Отображается в метрах в секунду
 
-## Technical Stack
+**УФ-индекс**
+- Средний уровень ультрафиолетового излучения
+- Расчет на основе данных ALLSKY_SFC_SW_DWN из NASA
+- Показывает уровень солнечной активности
 
-- **Frontend**: React 19, Vite
-- **Styling**: Tailwind CSS
-- **Charts**: Chart.js with React Chart.js 2
-- **Maps**: Leaflet with React Leaflet
-- **Data Processing**: Papa Parse for CSV, Simple Statistics
-- **Icons**: Lucide React
+### 4. AI Анализ погоды
+- Детальный анализ погодных условий для выбранной даты
+- Рекомендации по планированию мероприятий
+- Анализ подходящих условий для различных активностей
+- Генерация текстового отчета с помощью Gemini AI
 
-## Installation
+### 5. Оценка пригодности
+- Оценка погодных условий для конкретного события
+- Рейтинг от 1 до 10 с комментариями
+- Анализ рисков и рекомендации
+- Учет сезонных особенностей региона
 
+### 6. Климатическая история
+Комплексный анализ климатических данных за 25 лет:
+
+**График температурных трендов**
+- Изменение средней температуры по годам
+- Линейная регрессия для выявления трендов
+- Статистический анализ изменений
+
+**График осадков**
+- Динамика осадков по годам
+- Выявление засушливых и дождливых периодов
+- Сезонные колебания
+
+**Сезонный сдвиг**
+- Анализ изменения дат наступления теплых дней
+- Отслеживание климатических изменений
+- Визуализация сдвига сезонов
+
+**Экстремальные события**
+- Количество жарких дней (>35°C) по годам
+- Анализ экстремальных погодных явлений
+- Статистика аномальных температур
+
+### 7. Экспорт данных
+- Скачивание данных в формате CSV
+- Экспорт в JSON для программного использования
+- Генерация PDF отчетов
+- Сохранение графиков и диаграмм
+
+## Технические детали
+
+### Источники данных
+- NASA POWER (Prediction of Worldwide Energy Resources)
+- Период наблюдений: 1999-2024 (25 лет)
+- Разрешение: ежедневные данные
+- Покрытие: глобальное
+
+### Метрики NASA
+- T2M_MAX: Максимальная температура воздуха на высоте 2м
+- T2M_MIN: Минимальная температура воздуха на высоте 2м
+- RH2M: Относительная влажность на высоте 2м
+- PRECTOTCORR: Корректированные осадки
+- WS2M: Скорость ветра на высоте 2м
+- ALLSKY_SFC_SW_DWN: Поверхностное коротковолновое излучение
+- YEAR: Год наблюдения
+- MO: Месяц наблюдения
+- DY: День месяца
+- DOY: День года
+
+### Алгоритмы расчета
+
+**Средние значения**
+Для каждой метрики рассчитывается среднее арифметическое за выбранный период ±5 дней от целевой даты для всех лет наблюдений.
+
+**Вероятности**
+Система рассчитывает вероятность различных погодных условий на основе исторических данных за аналогичные периоды.
+
+**Тренды**
+Используется линейная регрессия для выявления долгосрочных трендов в климатических данных.
+
+**Сезонный анализ**
+Определение первого теплого дня (>20°C) в году и анализ его изменений во времени.
+
+### Искусственный интеллект
+- Использование Gemini AI для анализа данных
+- Генерация текстовых отчетов на русском языке
+- Контекстный анализ погодных условий
+- Персонализированные рекомендации
+
+## Технологический стек
+
+- **Frontend**: React 18, Vite
+- **Карты**: Leaflet, OpenStreetMap
+- **Графики**: Chart.js, Recharts
+- **AI**: Google Gemini API
+- **Стили**: Tailwind CSS
+- **Иконки**: Lucide React
+- **Парсинг**: Papa Parse (CSV)
+
+## Установка и запуск
+
+### Требования
+- Node.js 18+
+- npm или yarn
+- API ключ Gemini
+
+### Установка
 ```bash
-# Install dependencies
+git clone https://github.com/mirikssss/smartweather.git
+cd smartweather
 npm install
+```
 
-# Start development server
+### Настройка
+1. Создайте файл `.env.local`:
+```
+VITE_GEMINI_API_KEY=your_gemini_api_key_here
+```
+
+2. Запустите приложение:
+```bash
 npm run dev
+```
 
-# Build for production
+### Сборка для продакшена
+```bash
 npm run build
 ```
 
-## Usage
-
-1. **Select a city** from the dropdown in the left sidebar
-2. **Choose a date** using the date picker
-3. **Click "Показать результаты"** to analyze weather data
-4. **View results** in the main content area:
-   - Interactive map with selected city highlighted
-   - 6 weather information cards with metrics
-   - Trends graph showing historical data
-   - AI analysis panel with insights and recommendations
-5. **Export data** using the download buttons (CSV/JSON)
-
-## Data Processing
-
-The application processes NASA weather data by:
-
-1. **Loading CSV files** from the `/nasa_weather_data/` directory
-2. **Converting dates to Day of Year** (DOY) for seasonal analysis
-3. **Filtering data** by city and specific day of year
-4. **Calculating statistics**:
-   - Average, min, max values
-   - Probabilities for extreme weather
-   - Comfort scores based on multiple factors
-   - Trend analysis over years
-5. **Generating AI insights** based on historical patterns
-
-## File Structure
+## Структура проекта
 
 ```
 src/
-├── components/
-│   ├── Sidebar.jsx              # Left sidebar with controls
-│   ├── WeatherCards.jsx         # 6 weather information cards
-│   ├── TrendsGraph.jsx          # Interactive trends chart
-│   ├── AIAnalysisPanel.jsx      # AI analysis and recommendations
-│   └── LeafletMap.jsx           # Interactive map component
-├── hooks/
-│   └── useWeatherData.js        # Weather data management hook
-├── services/
-│   └── nasaDataService.js       # NASA data loading service
-├── utils/
-│   └── dataProcessing.js        # Data processing utilities
-└── App.jsx                      # Main application component
+├── components/          # React компоненты
+│   ├── ClimateHistoryDashboard.jsx
+│   ├── LeafletMap.jsx
+│   ├── Sidebar.jsx
+│   ├── WeatherCards.jsx
+│   └── ...
+├── services/           # Сервисы для работы с API
+│   ├── nasaDataService.js
+│   └── geminiService.js
+├── data/              # Статические данные
+│   └── cities.js
+├── utils/             # Утилиты
+│   └── advancedWeatherEffects.js
+└── hooks/             # React хуки
+    └── useWeatherData.js
 ```
 
-## Features in Detail
+## Деплой на Vercel
 
-### Weather Cards
-Each card displays:
-- **Icon** representing the weather parameter
-- **Main value** (large, prominent display)
-- **Subtitle** with additional context (min/max, averages)
-- **Detailed statistics** (median, standard deviation)
-- **Color coding** based on values and comfort levels
-- **Trend indicators** for temperature data
-- **Comprehensive metrics** for all weather parameters
+1. Подключите репозиторий к Vercel
+2. Настройте переменные окружения:
+   - `VITE_GEMINI_API_KEY`: ваш API ключ Gemini
+3. Деплой произойдет автоматически при push в main ветку
 
-### AI Analysis
-The AI analysis provides:
-- **Contextual summaries** based on historical data
-- **Practical recommendations** with priority levels
-- **Risk assessment** with probability percentages
-- **Alternative suggestions** for better weather conditions
-- **Comfort scoring** from 0-10 with detailed interpretation
-- **Data quality metrics** (completeness, reliability)
-- **Forecast confidence** based on data availability
+## API и интеграции
 
-### Trends Analysis
-The trends graph includes:
-- **Variable selection** (temperature, humidity, wind, precipitation, UV)
-- **Historical data** from 1999-2024
-- **Trend line** showing overall direction
-- **Statistical summary** (average, trend direction)
-- **Interactive tooltips** with detailed information
+### NASA POWER API
+Система использует предварительно загруженные данные NASA в формате CSV для обеспечения быстрой работы и стабильности.
 
-## Contributing
+### Gemini AI API
+Интеграция с Google Gemini для генерации текстовых анализов и рекомендаций.
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+## Производительность
 
-## 🤖 Gemini AI Integration
+- Ленивая загрузка компонентов
+- Кэширование данных NASA
+- Оптимизированная анимация графиков
+- Адаптивный дизайн для мобильных устройств
 
-The app includes optional Gemini AI integration for enhanced weather suggestions and recommendations.
+## Браузерная поддержка
 
-### Setup
-1. Get a free API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
-2. Enter the API key in the configuration panel at the top of the page
-3. The AI will provide personalized weather suggestions based on your selected city and date
+- Chrome 90+
+- Firefox 88+
+- Safari 14+
+- Edge 90+
 
-### Features
-- **Smart Recommendations**: AI-generated advice for outdoor activities
-- **Alternative Dates**: AI-suggested better dates for your plans
-- **Personalized Insights**: Tailored suggestions based on weather patterns
-- **Russian Language**: All AI responses are in Russian for better user experience
+## Лицензия
 
-## License
+MIT License
 
-This project is licensed under the MIT License.
+## Контакты
+
+Проект разработан для демонстрации возможностей анализа климатических данных с использованием современных веб-технологий и искусственного интеллекта.

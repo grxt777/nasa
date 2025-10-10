@@ -6,7 +6,12 @@ class NasaDataService {
     this.cache = new Map();
   }
 
-  async loadCityData(cityName, csvFileName) {
+  async loadCityData(cityName, csvFileName = null) {
+    // Если csvFileName не указан, ищем файл динамически
+    if (!csvFileName) {
+      csvFileName = await this.findCityFile(cityName);
+    }
+
     // Check cache first
     if (this.cache.has(csvFileName)) {
       return this.cache.get(csvFileName);
@@ -44,6 +49,49 @@ class NasaDataService {
       // Возвращаем fallback данные вместо выброса ошибки
       console.warn(`Using fallback data for ${cityName} due to loading error`);
       return [];
+    }
+  }
+
+  async findCityFile(cityName) {
+    try {
+      console.log('🔍 Поиск файла для города:', cityName);
+      
+      // Сначала проверяем альтернативные варианты для городов с особыми названиями
+      const alternatives = [
+        { city: 'Barrow (Utqiagvik)', file: 'nasa_weather_Barrow_Utqiagvik_1999_2024.csv' },
+        { city: 'New York', file: 'nasa_weather_New_York_City_1999_2024.csv' },
+        { city: 'Mexico City', file: 'nasa_weather_Mexico_City_1999_2024.csv' },
+        { city: 'Los Angeles', file: 'nasa_weather_Los_Angeles_1999_2024.csv' },
+        { city: 'Buenos Aires', file: 'nasa_weather_Buenos_Aires_1999_2024.csv' },
+        { city: 'Haines Junction', file: 'nasa_weather_Haines_Junction_1999_2024.csv' },
+        { city: 'Puerto Williams', file: 'nasa_weather_Puerto_Williams_1999_2024.csv' },
+        { city: 'Port Vila', file: 'nasa_weather_Port_Vila_1999_2024.csv' },
+        { city: 'Nuku\'alofa', file: 'nasa_weather_Nuku_alofa_1999_2024.csv' }
+      ];
+      
+      console.log('🔍 Проверяем альтернативы для:', cityName);
+      
+      // Ищем альтернативный файл
+      const alternative = alternatives.find(alt => {
+        const matches = alt.city.toLowerCase() === cityName.toLowerCase();
+        console.log(`🔍 Сравнение: "${alt.city}" === "${cityName}" = ${matches}`);
+        return matches;
+      });
+      
+      if (alternative) {
+        console.log(`✅ Используем альтернативный файл: ${alternative.file}`);
+        return alternative.file;
+      }
+      
+      // Если альтернатива не найдена, формируем имя файла стандартным способом
+      const fileName = `nasa_weather_${cityName.replace(/ /g, '_')}_1999_2024.csv`;
+      console.log(`📁 Стандартный файл: ${fileName}`);
+      
+      return fileName;
+      
+    } catch (error) {
+      console.error('Ошибка поиска файла:', error);
+      throw error;
     }
   }
 
@@ -95,7 +143,7 @@ class NasaDataService {
   }
 
   // Get weather data for specific city and date with ±5 day window
-  async getWeatherDataForDate(cityName, csvFileName, dateString, window = 5) {
+  async getWeatherDataForDate(cityName, csvFileName = null, dateString, window = 5) {
     try {
       const allData = await this.loadCityData(cityName, csvFileName);
       const dayOfYear = this.getDayOfYear(dateString);

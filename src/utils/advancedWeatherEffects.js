@@ -113,6 +113,39 @@ class AdvancedWeatherEffectsRenderer {
   }
 
   /**
+   * Проверка готовности карты
+   */
+  isMapReady() {
+    try {
+      // Базовая проверка карты
+      if (!this.map || !this.map.getContainer()) {
+        return false;
+      }
+
+      // Проверка методов карты
+      if (typeof this.map.latLngToContainerPoint !== 'function') {
+        return false;
+      }
+
+      // Проверка размеров контейнера
+      const container = this.map.getContainer();
+      if (!container || container.offsetWidth === 0 || container.offsetHeight === 0) {
+        return false;
+      }
+
+      // Проверяем, что карта имеет тайлы (загружена)
+      const layers = this.map._layers;
+      if (!layers || Object.keys(layers).length === 0) {
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /**
    * Получить радиус эффектов для города
    */
   getEffectRadius(cityName = null) {
@@ -154,27 +187,35 @@ class AdvancedWeatherEffectsRenderer {
    * Главная функция рендеринга
    */
   renderWeatherEffects(cityName, weatherData) {
-    // console.log('🎯 renderWeatherEffects called:', { cityName, weatherData });
-    
-    this.initialize();
-    
-    if (this.currentCity !== cityName) {
-      // console.log('🔄 City changed, fading out effects');
-      // Сбрасываем облака при смене города
-      if (this.realisticClouds) {
-        this.realisticClouds.reset();
-      }
+    try {
+      this.initialize();
       
-      this.fadeOutEffects(() => {
+      // Всегда сбрасываем эффекты при смене города
+      if (this.currentCity !== cityName) {
+        // Полностью останавливаем все эффекты
+        this.stopEffects();
+        
+        // Сбрасываем облака при смене города
+        if (this.realisticClouds) {
+          this.realisticClouds.reset();
+        }
+        
+        // Очищаем все canvas
+        [this.cloudsCtx, this.sunCtx, this.ctx, this.particlesCtx].forEach(ctx => {
+          if (ctx) {
+            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+          }
+        });
+        
         this.currentCity = cityName;
         this.weatherData = weatherData;
-        // console.log('✅ Starting effects for new city:', cityName);
         this.startEffects();
-      });
-    } else {
-      this.weatherData = weatherData;
-      // console.log('🔄 Updating effects for same city:', cityName);
-      this.startEffects();
+      } else {
+        this.weatherData = weatherData;
+        this.startEffects();
+      }
+    } catch (error) {
+      console.error('Error in renderWeatherEffects:', error);
     }
     
     // Обновляем центр и радиус эффектов для облаков
@@ -193,37 +234,19 @@ class AdvancedWeatherEffectsRenderer {
    * Запуск эффектов
    */
   startEffects() {
-    // console.log('🚀 startEffects called with:', { 
-    //   weatherData: this.weatherData, 
-    //   currentCity: this.currentCity 
-    // });
-    
     if (!this.weatherData || !this.currentCity) {
-      // console.log('❌ Missing weather data or city');
       return;
     }
 
-    // Проверяем, что карта полностью инициализирована
-    if (!this.map || !this.map._loaded || !this.map.getContainer()) {
-      console.warn('Map not ready for weather effects');
+    // Проверяем готовность карты с повторными попытками
+    if (!this.isMapReady()) {
+      // Если карта не готова, пытаемся запустить эффекты через небольшую задержку
+      setTimeout(() => this.startEffects(), 200);
       return;
     }
 
     const coords = this.cityCoordinates[this.currentCity];
     if (!coords) {
-      // console.log('❌ No coordinates for city:', this.currentCity);
-      return;
-    }
-
-    // Проверяем, что карта инициализирована
-    if (!this.map || !this.map.getContainer() || !this.map._loaded) {
-      // console.log('❌ Map not initialized');
-      return;
-    }
-
-    // Дополнительная проверка на наличие необходимых методов карты
-    if (typeof this.map.latLngToContainerPoint !== 'function') {
-      console.warn('Map latLngToContainerPoint method not available');
       return;
     }
 
@@ -1032,8 +1055,8 @@ class AdvancedWeatherEffectsRenderer {
       return;
     }
 
-    // Проверяем, что карта инициализирована
-    if (!this.map || !this.map.getContainer()) {
+    // Проверяем готовность карты
+    if (!this.isMapReady()) {
       this.animationFrame = requestAnimationFrame(() => this.animate());
       return;
     }
@@ -1102,8 +1125,8 @@ class AdvancedWeatherEffectsRenderer {
     const coords = this.cityCoordinates[this.currentCity];
     if (!coords) return;
     
-    // Проверяем, что карта инициализирована
-    if (!this.map || !this.map.getContainer()) return;
+    // Проверяем готовность карты
+    if (!this.isMapReady()) return;
     
     const cityPoint = this.map.latLngToContainerPoint(coords);
     const radius = this.getEffectRadius(this.currentCity);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MapPin, Calendar, Download, FileText, RotateCcw, Play, FileDown, ChevronDown } from 'lucide-react';
+import { MapPin, Calendar, Download, FileText, RotateCcw, Play, FileDown, ChevronDown, Search, X } from 'lucide-react';
 import { cities } from '../data/cities';
 import LoadingSpinner from './LoadingSpinner';
 import ProgressBar from './ProgressBar';
@@ -20,10 +20,19 @@ const Sidebar = ({
   loadingProgress,
   loadingStage,
   hasData,
-  onClose
+  onClose,
+  isWaitingForMapClick,
+  onMapClickModeChange,
+  onConfirmMarker,
+  markerCoordinates
 }) => {
   const [isDownloadDropdownOpen, setIsDownloadDropdownOpen] = useState(false);
+  const [isCitySearchOpen, setIsCitySearchOpen] = useState(false);
+  const [citySearchQuery, setCitySearchQuery] = useState('');
+  const [filteredCities, setFilteredCities] = useState(cities);
+  const [hasMarkerPlaced, setHasMarkerPlaced] = useState(false);
   const dropdownRef = useRef(null);
+  const citySearchRef = useRef(null);
 
   const handleDownload = (format) => {
     setIsDownloadDropdownOpen(false);
@@ -46,11 +55,84 @@ const Sidebar = ({
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsDownloadDropdownOpen(false);
       }
+      if (citySearchRef.current && !citySearchRef.current.contains(event.target)) {
+        setIsCitySearchOpen(false);
+        setCitySearchQuery('');
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Filter cities based on search query
+  useEffect(() => {
+    if (citySearchQuery.trim() === '') {
+      setFilteredCities(cities);
+    } else {
+      const query = citySearchQuery.toLowerCase();
+      const filtered = cities.filter(city => 
+        city.name.toLowerCase().includes(query) ||
+        city.country.toLowerCase().includes(query) ||
+        `${city.name}, ${city.country}`.toLowerCase().includes(query)
+      );
+      setFilteredCities(filtered);
+    }
+  }, [citySearchQuery]);
+
+  // Handle city selection from search
+  const handleCitySelect = (city) => {
+    onCityChange(city);
+    setIsCitySearchOpen(false);
+    setCitySearchQuery('');
+    onMapClickModeChange(false);
+  };
+
+  // Handle map click mode toggle
+  const handleMapClickMode = () => {
+    onMapClickModeChange(!isWaitingForMapClick);
+    setIsCitySearchOpen(false);
+    setCitySearchQuery('');
+    setHasMarkerPlaced(false);
+  };
+
+  // Handle marker placement
+  const handleMarkerPlaced = () => {
+    setHasMarkerPlaced(true);
+  };
+
+  // Handle confirm marker selection
+  const handleConfirmMarker = () => {
+    if (onConfirmMarker) {
+      onConfirmMarker();
+    }
+    setHasMarkerPlaced(false);
+  };
+
+
+  // Track marker placement
+  useEffect(() => {
+    if (markerCoordinates) {
+      setHasMarkerPlaced(true);
+    }
+  }, [markerCoordinates]);
+
+  // Prevent sidebar from closing when keyboard is open
+  useEffect(() => {
+    const handleKeyboardToggle = () => {
+      // Не закрываем сайдбар при открытии клавиатуры
+      const isKeyboardOpen = window.innerHeight < window.screen.height * 0.75;
+      if (isKeyboardOpen) {
+        // Предотвращаем закрытие сайдбара
+        return;
+      }
+    };
+
+    window.addEventListener('resize', handleKeyboardToggle);
+    return () => {
+      window.removeEventListener('resize', handleKeyboardToggle);
     };
   }, []);
 
@@ -65,26 +147,81 @@ const Sidebar = ({
       {/* Inputs Section */}
       <div className="p-6 space-y-6">
         {/* City Selector */}
-        <div>
+        <div className="relative" ref={citySearchRef}>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             <MapPin className="inline w-4 h-4 mr-1" />
             City
           </label>
-          <select
-            value={selectedCity?.id || ''}
-            onChange={(e) => {
-              const city = cities.find(c => c.id === e.target.value);
-              onCityChange(city);
-            }}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-all duration-200 ease-in-out hover:border-blue-400 hover:shadow-sm"
-          >
-            <option value="">Select a city</option>
-            {cities.map(city => (
-              <option key={city.id} value={city.id}>
-                {city.name}, {city.country}
-              </option>
-            ))}
-          </select>
+          
+          {/* Search Input */}
+          <div className="relative">
+            <input
+              type="text"
+              value={citySearchQuery}
+              onChange={(e) => {
+                setCitySearchQuery(e.target.value);
+                setIsCitySearchOpen(true);
+              }}
+              onFocus={() => setIsCitySearchOpen(true)}
+              placeholder={selectedCity ? `${selectedCity.name}, ${selectedCity.country}` : "Search city..."}
+              className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm transition-all duration-200 ease-in-out hover:border-blue-400 hover:shadow-sm"
+            />
+            <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+          </div>
+
+          {/* Map Click Button */}
+          {!hasMarkerPlaced ? (
+            <button
+              onClick={handleMapClickMode}
+              className={`w-full mt-2 px-3 py-2 text-sm rounded-lg border transition-all duration-200 ${
+                isWaitingForMapClick 
+                  ? 'bg-blue-100 border-blue-300 text-blue-700' 
+                  : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              {isWaitingForMapClick ? 'Click on map to place marker' : 'Place marker on map'}
+            </button>
+          ) : (
+            <div className="mt-2 space-y-2">
+              <div className="text-xs text-green-600 text-center">
+                ✓ Marker placed successfully
+              </div>
+              <button
+                onClick={handleConfirmMarker}
+                className="w-full px-3 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                Confirm location
+              </button>
+              <button
+                onClick={handleMapClickMode}
+                className="w-full px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Place new marker
+              </button>
+            </div>
+          )}
+
+          {/* Search Results Dropdown */}
+          {isCitySearchOpen && (
+            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+              {filteredCities.length > 0 ? (
+                filteredCities.map(city => (
+                  <div
+                    key={city.id}
+                    onClick={() => handleCitySelect(city)}
+                    className="px-3 py-2 hover:bg-gray-100 cursor-pointer text-sm border-b border-gray-100 last:border-b-0"
+                  >
+                    <div className="font-medium text-gray-900">{city.name}</div>
+                    <div className="text-gray-500">{city.country}</div>
+                  </div>
+                ))
+              ) : (
+                <div className="px-3 py-2 text-sm text-gray-500 italic">
+                  {citySearchQuery.trim() ? 'City not found. Soon we will add this city!' : 'No cities available'}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Date Picker */}
@@ -133,22 +270,6 @@ const Sidebar = ({
           </div>
         )}
 
-        {/* Selected Info */}
-        {selectedCity && selectedDate && !isLoading && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h3 className="font-medium text-blue-900 mb-1">Selected Parameters:</h3>
-            <p className="text-sm text-blue-700">
-              <strong>{selectedCity.name}</strong>, {selectedCity.country}
-            </p>
-            <p className="text-sm text-blue-700">
-              {new Date(selectedDate).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-              })}
-            </p>
-          </div>
-        )}
       </div>
 
       {/* Action Buttons */}
