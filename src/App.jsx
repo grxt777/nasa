@@ -1,20 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import Sidebar from './components/Sidebar';
-import LeafletMap from './components/LeafletMap';
-import WeatherCards from './components/WeatherCards';
-import WeatherGraphs from './components/WeatherGraphs';
-import AIAnalysis from './components/AIAnalysis';
-import AlternativeDates from './components/AlternativeDates';
-import ApiKeyConfig from './components/ApiKeyConfig';
 import LoadingSpinner from './components/LoadingSpinner';
-import ProgressBar from './components/ProgressBar';
 import LoadingSkeleton from './components/LoadingSkeleton';
 import { useWeatherData } from './hooks/useWeatherData';
-import SuitabilityAssessment from './components/SuitabilityAssessment';
-import ClimateHistoryDashboard from './components/ClimateHistoryDashboard';
-import Footer from './components/Footer';
 import { cities } from './data/cities';
 import { Menu, X } from 'lucide-react';
+
+// Lazy load heavy components
+const LeafletMap = lazy(() => import('./components/LeafletMap'));
+const WeatherCards = lazy(() => import('./components/WeatherCards'));
+const WeatherGraphs = lazy(() => import('./components/WeatherGraphs'));
+const AIAnalysis = lazy(() => import('./components/AIAnalysis'));
+const AlternativeDates = lazy(() => import('./components/AlternativeDates'));
+const ApiKeyConfig = lazy(() => import('./components/ApiKeyConfig'));
+const SuitabilityAssessment = lazy(() => import('./components/SuitabilityAssessment'));
+const ClimateHistoryDashboard = lazy(() => import('./components/ClimateHistoryDashboard'));
+const Footer = lazy(() => import('./components/Footer'));
 
 function App() {
   const [selectedCity, setSelectedCity] = useState(null);
@@ -413,7 +414,9 @@ function App() {
             {/* API Key Configuration: show when no API key present */}
             {(!localStorage.getItem('gemini_api_key') && !import.meta.env.VITE_GEMINI_API_KEY) && (
               <div className="mb-6">
-                <ApiKeyConfig onApiKeySet={() => { /* triggers rerender via localStorage */ }} />
+                <Suspense fallback={<LoadingSkeleton type="card" count={1} />}>
+                  <ApiKeyConfig onApiKeySet={() => { /* triggers rerender via localStorage */ }} />
+                </Suspense>
               </div>
             )}
 
@@ -428,14 +431,16 @@ function App() {
               {isLoading ? (
                 <LoadingSkeleton type="map" />
               ) : (
-                <LeafletMap
-                  selectedCity={selectedCity}
-                  onCitySelect={handleCitySelect}
-                  cities={cities}
-                  weatherData={weatherData}
-                  onMapClick={handleMapClick}
-                  isWaitingForMapClick={isWaitingForMapClick}
-                />
+                <Suspense fallback={<LoadingSkeleton type="map" />}>
+                  <LeafletMap
+                    selectedCity={selectedCity}
+                    onCitySelect={handleCitySelect}
+                    cities={cities}
+                    weatherData={weatherData}
+                    onMapClick={handleMapClick}
+                    isWaitingForMapClick={isWaitingForMapClick}
+                  />
+                </Suspense>
               )}
             </div>
 
@@ -445,12 +450,14 @@ function App() {
               {isLoading ? (
                 <LoadingSkeleton type="card" count={6} />
               ) : hasData ? (
-                <WeatherCards 
-                  weatherData={weatherData} 
-                  selectedCity={selectedCity}
-                  selectedDate={selectedDate}
-                  selectedEvent={selectedEvent}
-                />
+                <Suspense fallback={<LoadingSkeleton type="card" count={6} />}>
+                  <WeatherCards 
+                    weatherData={weatherData} 
+                    selectedCity={selectedCity}
+                    selectedDate={selectedDate}
+                    selectedEvent={selectedEvent}
+                  />
+                </Suspense>
               ) : (
                 <div className="text-center py-8 text-gray-500">
                   
@@ -463,12 +470,14 @@ function App() {
               {isLoading ? (
                 <LoadingSkeleton type="text" count={3} />
               ) : hasData ? (
-                <AIAnalysis 
-                  weatherData={weatherData} 
-                  selectedCity={selectedCity} 
-                  selectedDate={selectedDate}
-                  selectedEvent={selectedEvent}
-                />
+                <Suspense fallback={<LoadingSkeleton type="text" count={3} />}>
+                  <AIAnalysis 
+                    weatherData={weatherData} 
+                    selectedCity={selectedCity} 
+                    selectedDate={selectedDate}
+                    selectedEvent={selectedEvent}
+                  />
+                </Suspense>
               ) : null}
             </div>
 
@@ -478,12 +487,14 @@ function App() {
                 <LoadingSkeleton type="card" count={1} />
               </div>
             ) : hasData ? (
-              <SuitabilityAssessment 
-                weatherData={weatherData} 
-                selectedCity={selectedCity}
-                selectedDate={selectedDate}
-                selectedEvent={selectedEvent}
-              />
+              <Suspense fallback={<LoadingSkeleton type="card" count={1} />}>
+                <SuitabilityAssessment 
+                  weatherData={weatherData} 
+                  selectedCity={selectedCity}
+                  selectedDate={selectedDate}
+                  selectedEvent={selectedEvent}
+                />
+              </Suspense>
             ) : null}
 
             {/* Weather Graphs */}
@@ -491,12 +502,14 @@ function App() {
               {isLoading ? (
                 <LoadingSkeleton type="graph" count={1} />
               ) : hasData ? (
-                <WeatherGraphs
-                  weatherData={weatherData}
-                  trendData={trendData}
-                  selectedVariable={selectedVariable}
-                  onVariableChange={handleVariableChange}
-                />
+                <Suspense fallback={<LoadingSkeleton type="graph" count={1} />}>
+                  <WeatherGraphs
+                    weatherData={weatherData}
+                    trendData={trendData}
+                    selectedVariable={selectedVariable}
+                    onVariableChange={handleVariableChange}
+                  />
+                </Suspense>
               ) : null}
             </div>
 
@@ -505,12 +518,14 @@ function App() {
               {isLoading ? (
                 <LoadingSkeleton type="text" count={2} />
               ) : hasData ? (
-                <AlternativeDates 
-                  weatherData={weatherData} 
-                  selectedCity={selectedCity} 
-                  selectedDate={selectedDate}
-                  selectedEvent={selectedEvent}
-                />
+                <Suspense fallback={<LoadingSkeleton type="text" count={2} />}>
+                  <AlternativeDates 
+                    weatherData={weatherData} 
+                    selectedCity={selectedCity} 
+                    selectedDate={selectedDate}
+                    selectedEvent={selectedEvent}
+                  />
+                </Suspense>
               ) : null}
             </div>
 
@@ -519,11 +534,13 @@ function App() {
               {isLoading ? (
                 <LoadingSkeleton type="text" count={2} />
               ) : hasData && weatherData && selectedCity ? (
-                <ClimateHistoryDashboard 
-                  weatherData={weatherData} 
-                  selectedCity={selectedCity} 
-                  selectedDate={selectedDate}
-                />
+                <Suspense fallback={<LoadingSkeleton type="text" count={2} />}>
+                  <ClimateHistoryDashboard 
+                    weatherData={weatherData} 
+                    selectedCity={selectedCity} 
+                    selectedDate={selectedDate}
+                  />
+                </Suspense>
               ) : null}
             </div>
 
@@ -556,7 +573,9 @@ function App() {
       </div>
     
     {/* Footer */}
-    <Footer />
+    <Suspense fallback={<div className="h-20 bg-gray-100" />}>
+      <Footer />
+    </Suspense>
     </div>
   );
 }

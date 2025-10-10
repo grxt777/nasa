@@ -4,6 +4,23 @@ import { fetchWithRetry, getErrorMessage, logError, createFallbackData } from '.
 class NasaDataService {
   constructor() {
     this.cache = new Map();
+    this.cacheTimeout = 5 * 60 * 1000; // 5 minutes
+  }
+
+  // Clear expired cache entries
+  clearExpiredCache() {
+    const now = Date.now();
+    for (const [key, value] of this.cache.entries()) {
+      if (now - value.timestamp > this.cacheTimeout) {
+        this.cache.delete(key);
+      }
+    }
+  }
+
+  // Clear all cache
+  clearCache() {
+    this.cache.clear();
+    console.log('🗑️ Кэш очищен');
   }
 
   async loadCityData(cityName, csvFileName = null) {
@@ -13,8 +30,15 @@ class NasaDataService {
     }
 
     // Check cache first
-    if (this.cache.has(csvFileName)) {
-      return this.cache.get(csvFileName);
+    const cacheKey = `${csvFileName}_${cityName}`;
+    if (this.cache.has(cacheKey)) {
+      const cached = this.cache.get(cacheKey);
+      if (Date.now() - cached.timestamp < this.cacheTimeout) {
+        console.log('📦 Используем кэшированные данные для:', cityName);
+        return cached.data;
+      } else {
+        this.cache.delete(cacheKey);
+      }
     }
 
     try {
@@ -40,8 +64,12 @@ class NasaDataService {
       const csvText = await response.text();
       const data = await this.parseCSVData(csvText);
       
-      // Cache the data
-      this.cache.set(csvFileName, data);
+      // Cache the data with timestamp
+      this.cache.set(cacheKey, {
+        data,
+        timestamp: Date.now()
+      });
+      console.log('💾 Данные сохранены в кэш для:', cityName);
       return data;
     } catch (error) {
       logError(error, `loadCityData-${cityName}`);

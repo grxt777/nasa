@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo, useMemo, useCallback } from 'react';
 import { Thermometer, Droplets, Wind, Sun, Loader2, CloudRain, AlertTriangle, Shield, Zap, Activity } from 'lucide-react';
 import geminiService from '../services/geminiService';
 import AnimatedCard from './AnimatedCard';
 import AnimatedNumber from './AnimatedNumber';
 
-const WeatherCards = ({ weatherData, selectedCity, selectedDate, selectedEvent }) => {
+const WeatherCards = memo(({ weatherData, selectedCity, selectedDate, selectedEvent }) => {
   const [aiComments, setAiComments] = useState(null);
   const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [commentsError, setCommentsError] = useState('');
@@ -13,9 +13,9 @@ const WeatherCards = ({ weatherData, selectedCity, selectedDate, selectedEvent }
     if (weatherData && selectedCity && selectedDate) {
       loadAIComments();
     }
-  }, [weatherData, selectedCity, selectedDate, selectedEvent]);
+  }, [loadAIComments]);
 
-  const loadAIComments = async () => {
+  const loadAIComments = useCallback(async () => {
     setIsLoadingComments(true);
     setCommentsError('');
     
@@ -48,7 +48,7 @@ const WeatherCards = ({ weatherData, selectedCity, selectedDate, selectedEvent }
     } finally {
       setIsLoadingComments(false);
     }
-  };
+  }, [weatherData, selectedCity, selectedDate, selectedEvent]);
 
   if (!weatherData) {
     return null;
@@ -376,6 +376,8 @@ const WeatherCards = ({ weatherData, selectedCity, selectedDate, selectedEvent }
       </div>
     </div>
   );
-};
+});
+
+WeatherCards.displayName = 'WeatherCards';
 
 export default WeatherCards;

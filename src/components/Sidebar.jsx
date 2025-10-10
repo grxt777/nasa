@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, memo, useMemo } from 'react';
 import { MapPin, Calendar, Download, FileText, RotateCcw, Play, FileDown, ChevronDown, Search, X } from 'lucide-react';
 import { cities } from '../data/cities';
 import LoadingSpinner from './LoadingSpinner';
 import ProgressBar from './ProgressBar';
+import { useDebounce } from '../hooks/useDebounce';
 
-const Sidebar = ({ 
+const Sidebar = memo(({ 
   selectedCity, 
   onCityChange, 
   selectedDate, 
@@ -29,10 +30,12 @@ const Sidebar = ({
   const [isDownloadDropdownOpen, setIsDownloadDropdownOpen] = useState(false);
   const [isCitySearchOpen, setIsCitySearchOpen] = useState(false);
   const [citySearchQuery, setCitySearchQuery] = useState('');
-  const [filteredCities, setFilteredCities] = useState(cities);
   const [hasMarkerPlaced, setHasMarkerPlaced] = useState(false);
   const dropdownRef = useRef(null);
   const citySearchRef = useRef(null);
+
+  // Debounce city search
+  const debouncedCitySearchQuery = useDebounce(citySearchQuery, 300);
 
   const handleDownload = (format) => {
     setIsDownloadDropdownOpen(false);
@@ -67,20 +70,19 @@ const Sidebar = ({
     };
   }, []);
 
-  // Filter cities based on search query
-  useEffect(() => {
-    if (citySearchQuery.trim() === '') {
-      setFilteredCities(cities);
-    } else {
-      const query = citySearchQuery.toLowerCase();
-      const filtered = cities.filter(city => 
-        city.name.toLowerCase().includes(query) ||
-        city.country.toLowerCase().includes(query) ||
-        `${city.name}, ${city.country}`.toLowerCase().includes(query)
-      );
-      setFilteredCities(filtered);
+  // Memoized city filtering
+  const filteredCities = useMemo(() => {
+    if (debouncedCitySearchQuery.trim() === '') {
+      return cities;
     }
-  }, [citySearchQuery]);
+    
+    const query = debouncedCitySearchQuery.toLowerCase();
+    return cities.filter(city => 
+      city.name.toLowerCase().includes(query) ||
+      city.country.toLowerCase().includes(query) ||
+      `${city.name}, ${city.country}`.toLowerCase().includes(query)
+    );
+  }, [debouncedCitySearchQuery]);
 
   // Handle city selection from search
   const handleCitySelect = (city) => {
@@ -354,6 +356,8 @@ const Sidebar = ({
       </div>
     </div>
   );
-};
+});
+
+Sidebar.displayName = 'Sidebar';
 
 export default Sidebar;

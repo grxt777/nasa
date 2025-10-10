@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, memo, useCallback } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import AdvancedWeatherEffectsRenderer from '../utils/advancedWeatherEffects';
@@ -11,7 +11,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-const LeafletMap = ({ selectedCity, onCitySelect, cities, weatherData, onMapClick, isWaitingForMapClick }) => {
+const LeafletMap = memo(({ selectedCity, onCitySelect, cities, weatherData, onMapClick, isWaitingForMapClick }) => {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef([]);
@@ -336,6 +336,8 @@ const LeafletMap = ({ selectedCity, onCitySelect, cities, weatherData, onMapClic
       )}
     </div>
   );
-};
+});
+
+LeafletMap.displayName = 'LeafletMap';
 
 export default LeafletMap;
