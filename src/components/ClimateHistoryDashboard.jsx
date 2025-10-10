@@ -149,6 +149,11 @@ const ClimateHistoryDashboard = ({ weatherData, selectedCity, selectedDate }) =>
     );
   }
 
+  // Calculate mean temperature for anomaly calculations
+  const meanTemp = climateData.length > 0 
+    ? climateData.reduce((sum, d) => sum + d.temperature, 0) / climateData.length
+    : 15;
+
   // Audit trail logging
   const logAnalysisRequest = useCallback((action, details = {}) => {
     const logEntry = {
@@ -445,11 +450,6 @@ const ClimateHistoryDashboard = ({ weatherData, selectedCity, selectedDate }) =>
       };
     });
   };
-
-  // Calculate mean temperature for anomaly calculations
-  const meanTemp = climateData.length > 0 
-    ? climateData.reduce((sum, d) => sum + d.temperature, 0) / climateData.length
-    : 15;
 
   // Load AI insights
   useEffect(() => {
