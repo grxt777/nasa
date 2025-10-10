@@ -23,8 +23,9 @@
 1. В настройках проекта перейдите в "Environment Variables"
 2. Добавьте переменную:
    - **Name**: `VITE_GEMINI_API_KEY`
-   - **Value**: ваш API ключ Gemini
+   - **Value**: ваш API ключ Gemini (например: AIzaSyB...)
    - **Environment**: Production, Preview, Development
+3. **ВАЖНО**: Не используйте символ @ в значении переменной
 
 ### Шаг 3: Настройка сборки
 Vercel автоматически определит настройки сборки:
