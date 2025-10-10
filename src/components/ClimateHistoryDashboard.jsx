@@ -354,12 +354,12 @@ const ClimateHistoryDashboard = ({ weatherData, selectedCity, selectedDate }) =>
         if (!isNaN(tempMax) && tempMax > -100 && tempMax < 100) {
           yearlyStats[year].temperatures.push(tempMax);
           
-          // Count hot days (>35°C)
+          // Count hot days (&gt;35°C)
           if (tempMax > 35) {
             yearlyStats[year].hotDays++;
           }
           
-          // Track first warm day (>20°C)
+          // Track first warm day (&gt;20°C)
           if (tempMax > 20) {
             const doy = parseInt(record.DOY);
             if (!isNaN(doy) && doy > 0 && doy <= 366) {
@@ -373,7 +373,7 @@ const ClimateHistoryDashboard = ({ weatherData, selectedCity, selectedDate }) =>
         if (!isNaN(precipitation) && precipitation >= 0 && precipitation < 1000) {
           yearlyStats[year].precipitations.push(precipitation);
           
-          // Count heavy rain days (>20mm)
+          // Count heavy rain days (&gt;20mm)
           if (precipitation > 20) {
             yearlyStats[year].rainyDays++;
           }
@@ -474,11 +474,11 @@ Temperature Trends:
 - Above-average years: ${aboveAverageYears}, Below-average years: ${belowAverageYears}
 
 Extreme Weather Patterns:
-- Average hot days (>35°C): ${avgHotDays} per year
-- Average heavy rain days (>20mm): ${avgRainyDays} per year
+- Average hot days (&gt;35°C): ${avgHotDays} per year
+- Average heavy rain days (&gt;20mm): ${avgRainyDays} per year
 
 Seasonal Changes:
-- First warm day (>20°C): Average day ${avgFirstWarmDay} of the year
+- First warm day (&gt;20°C): Average day ${avgFirstWarmDay} of the year
 ${avgFirstWarmDay < 80 ? '- Spring appears to be arriving earlier' : avgFirstWarmDay > 100 ? '- Spring appears to be arriving later' : '- Spring timing appears stable'}
 
 Climate Summary:
@@ -939,7 +939,7 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
           </div>
           <div className="h-80 bg-gray-50 rounded-lg flex items-center justify-center">
             <div className="text-center">
-              <p className="text-gray-600">No warm days (>20°C) found in climate data</p>
+              <p className="text-gray-600">No warm days (&gt;20°C) found in climate data</p>
             </div>
           </div>
         </div>
