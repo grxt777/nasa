@@ -1,7 +1,8 @@
 {
-  "name": "weather-analysis-app",
+  "name": "nasa-smartweather",
+  "description": "Интеллектуальная система анализа погодных данных NASA с AI",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
