@@ -9,7 +9,6 @@ import {
   BarChart3,
   Activity,
   Download,
-  FileText,
   Image,
   FileSpreadsheet
 } from 'lucide-react';
@@ -31,8 +30,7 @@ const ClimateHistoryDashboard = ({ weatherData, selectedCity, selectedDate }) =>
   const [animationFrameRate, setAnimationFrameRate] = useState(60);
   const [isMobile, setIsMobile] = useState(false);
   
-  // Export and audit trail states
-  const [auditLog, setAuditLog] = useState([]);
+  // Export states
   const [isExporting, setIsExporting] = useState(false);
   
   // Refs for performance monitoring
@@ -84,11 +82,6 @@ const ClimateHistoryDashboard = ({ weatherData, selectedCity, selectedDate }) =>
     };
   }, []);
 
-  // Initialize audit log from localStorage
-  useEffect(() => {
-    const existingLogs = JSON.parse(localStorage.getItem('climateAnalysisLogs') || '[]');
-    setAuditLog(existingLogs);
-  }, []);
 
   // Intersection Observer for lazy loading charts
   useEffect(() => {
@@ -154,25 +147,6 @@ const ClimateHistoryDashboard = ({ weatherData, selectedCity, selectedDate }) =>
     ? climateData.reduce((sum, d) => sum + d.temperature, 0) / climateData.length
     : 15;
 
-  // Audit trail logging
-  const logAnalysisRequest = useCallback((action, details = {}) => {
-    const logEntry = {
-      timestamp: new Date().toISOString(),
-      action,
-      city: selectedCity?.name || 'Unknown',
-      date: selectedDate || 'Unknown',
-      details,
-      userAgent: navigator.userAgent,
-      sessionId: sessionStorage.getItem('sessionId') || 'anonymous'
-    };
-    
-    setAuditLog(prev => [...prev, logEntry]);
-    
-    // Store in localStorage for persistence
-    const existingLogs = JSON.parse(localStorage.getItem('climateAnalysisLogs') || '[]');
-    existingLogs.push(logEntry);
-    localStorage.setItem('climateAnalysisLogs', JSON.stringify(existingLogs.slice(-100))); // Keep last 100 entries
-  }, [selectedCity, selectedDate]);
 
   // Export functions
   const exportChartAsPNG = useCallback(async (chartId, chartName) => {
@@ -1107,9 +1081,6 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
               ) : (
                 <span className="text-gray-500">No data available</span>
               )}
-              <span className="ml-2 text-xs px-2 py-1 rounded-full bg-gray-100">
-                {devicePerformance} perf • {animationFrameRate}fps
-              </span>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -1231,21 +1202,6 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
                   </div>
                 )}
                 
-                {/* Performance indicator */}
-                <div className="flex items-center gap-2 text-xs">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                    devicePerformance === 'low' ? 'bg-red-100 text-red-700' :
-                    devicePerformance === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                    'bg-green-100 text-green-700'
-                  }`}>
-                    {devicePerformance} performance
-                  </span>
-                  {isMobile && (
-                    <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">
-                      Mobile optimized
-                    </span>
-                  )}
-                </div>
               </div>
             </div>
           </div>
@@ -1364,42 +1320,6 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
             )}
           </div>
           
-          {/* Audit Trail */}
-          {auditLog.length > 0 && (
-            <div className="border-t border-gray-200 pt-6 mt-6">
-              <div className="flex items-center gap-2 mb-4">
-                <FileText className="w-5 h-5 text-gray-600" />
-                <h3 className="text-lg font-semibold text-gray-900">Analysis Log</h3>
-                <span className="text-xs text-gray-500">({auditLog.length} entries)</span>
-              </div>
-              
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 max-h-40 overflow-y-auto">
-                <div className="space-y-2 text-xs">
-                  {auditLog.slice(-10).reverse().map((entry, index) => (
-                    <div key={index} className="flex items-start gap-2 text-gray-600">
-                      <span className="text-gray-400 font-mono text-xs">
-                        {new Date(entry.timestamp).toLocaleTimeString()}
-                      </span>
-                      <span className="font-medium">{entry.action}</span>
-                      <span className="text-gray-500">
-                        {entry.city} • {entry.date}
-                      </span>
-                      {entry.details && Object.keys(entry.details).length > 0 && (
-                        <span className="text-gray-400">
-                          ({Object.entries(entry.details).map(([k, v]) => `${k}: ${v}`).join(', ')})
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              
-              <div className="mt-2 text-xs text-gray-500">
-                <p>Analysis log tracks all user actions for reproducibility and audit purposes.</p>
-                <p>Data stored locally in browser. Last 100 entries kept.</p>
-              </div>
-            </div>
-          )}
         </div>
       </AnimatedCard>
     </div>
