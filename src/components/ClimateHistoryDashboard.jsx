@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -20,6 +20,87 @@ const ClimateHistoryDashboard = ({ weatherData, selectedCity, selectedDate }) =>
   const [climateData, setClimateData] = useState([]);
   const [isLoadingData, setIsLoadingData] = useState(false);
   const [dataError, setDataError] = useState('');
+  
+  // Performance optimization states
+  const [visibleCharts, setVisibleCharts] = useState(new Set(['temperature']));
+  const [devicePerformance, setDevicePerformance] = useState('high');
+  const [animationFrameRate, setAnimationFrameRate] = useState(60);
+  const [isMobile, setIsMobile] = useState(false);
+  
+  // Refs for performance monitoring
+  const performanceRef = useRef({ frameCount: 0, lastTime: 0 });
+  const intersectionObserverRef = useRef(null);
+  const chartRefs = useRef({});
+
+  // Performance detection and optimization
+  useEffect(() => {
+    // Detect mobile device
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768 || /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      setIsMobile(mobile);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    // Performance monitoring
+    const measurePerformance = () => {
+      const now = performance.now();
+      performanceRef.current.frameCount++;
+      
+      if (now - performanceRef.current.lastTime >= 1000) {
+        const fps = performanceRef.current.frameCount;
+        performanceRef.current.frameCount = 0;
+        performanceRef.current.lastTime = now;
+        
+        // Adjust performance based on FPS
+        if (fps < 30) {
+          setDevicePerformance('low');
+          setAnimationFrameRate(30);
+        } else if (fps < 45) {
+          setDevicePerformance('medium');
+          setAnimationFrameRate(45);
+        } else {
+          setDevicePerformance('high');
+          setAnimationFrameRate(60);
+        }
+      }
+      
+      requestAnimationFrame(measurePerformance);
+    };
+    
+    requestAnimationFrame(measurePerformance);
+    
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+    };
+  }, []);
+
+  // Intersection Observer for lazy loading charts
+  useEffect(() => {
+    if (!intersectionObserverRef.current) {
+      intersectionObserverRef.current = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            const chartId = entry.target.dataset.chartId;
+            if (entry.isIntersecting) {
+              setVisibleCharts(prev => new Set([...prev, chartId]));
+            }
+          });
+        },
+        { 
+          rootMargin: '50px',
+          threshold: 0.1 
+        }
+      );
+    }
+
+    return () => {
+      if (intersectionObserverRef.current) {
+        intersectionObserverRef.current.disconnect();
+      }
+    };
+  }, []);
 
   // Early return if no city selected
   if (!selectedCity) {
@@ -758,10 +839,95 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
     );
   };
 
-  // Time-Lapse Animation Component
+  // Canvas-based Time-Lapse Animation Component
   const TimeLapseAnimation = () => {
     const [currentYear, setCurrentYear] = useState(1999);
     const [isPlaying, setIsPlaying] = useState(false);
+    const canvasRef = useRef(null);
+    const animationRef = useRef(null);
+    
+    // Optimized animation interval based on device performance
+    const getAnimationInterval = useCallback(() => {
+      switch (devicePerformance) {
+        case 'low': return 400; // 2.5 FPS
+        case 'medium': return 300; // 3.3 FPS
+        default: return 200; // 5 FPS
+      }
+    }, [devicePerformance]);
+    
+    // Canvas rendering function
+    const renderCanvas = useCallback(() => {
+      const canvas = canvasRef.current;
+      if (!canvas || climateData.length === 0) return;
+      
+      const ctx = canvas.getContext('2d');
+      const { width, height } = canvas;
+      
+      // Clear canvas
+      ctx.clearRect(0, 0, width, height);
+      
+      // Draw background gradient
+      const gradient = ctx.createLinearGradient(0, 0, width, height);
+      gradient.addColorStop(0, '#f8fafc');
+      gradient.addColorStop(1, '#e2e8f0');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
+      
+      // Draw temperature line
+      ctx.beginPath();
+      ctx.strokeStyle = '#3b82f6';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      
+      climateData.forEach((d, i) => {
+        const x = (i / Math.max(climateData.length - 1, 1)) * width;
+        const normalizedTemp = (d.temperature - Math.min(...climateData.map(d => d.temperature))) / 
+                              Math.max(Math.max(...climateData.map(d => d.temperature)) - Math.min(...climateData.map(d => d.temperature)), 1);
+        const y = height - (normalizedTemp * height * 0.6 + height * 0.2);
+        
+        if (i === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      });
+      ctx.stroke();
+      
+      // Draw current year indicator
+      const currentIndex = climateData.findIndex(d => d.year === currentYear);
+      if (currentIndex !== -1) {
+        const x = (currentIndex / Math.max(climateData.length - 1, 1)) * width;
+        const currentData = climateData[currentIndex];
+        const normalizedTemp = (currentData.temperature - Math.min(...climateData.map(d => d.temperature))) / 
+                              Math.max(Math.max(...climateData.map(d => d.temperature)) - Math.min(...climateData.map(d => d.temperature)), 1);
+        const y = height - (normalizedTemp * height * 0.6 + height * 0.2);
+        
+        // Draw indicator circle
+        ctx.beginPath();
+        ctx.arc(x, y, 8, 0, 2 * Math.PI);
+        ctx.fillStyle = '#ef4444';
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        
+        // Draw year label
+        ctx.fillStyle = '#374151';
+        ctx.font = 'bold 14px system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillText(currentYear.toString(), x, y - 15);
+      }
+      
+      // Draw performance indicator
+      ctx.fillStyle = devicePerformance === 'low' ? '#ef4444' : devicePerformance === 'medium' ? '#f59e0b' : '#10b981';
+      ctx.font = '10px system-ui';
+      ctx.textAlign = 'right';
+      ctx.fillText(`${devicePerformance} perf`, width - 10, 20);
+    }, [climateData, currentYear, devicePerformance]);
+    
+    useEffect(() => {
+      renderCanvas();
+    }, [renderCanvas]);
     
     useEffect(() => {
       if (isPlaying) {
@@ -773,10 +939,10 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
             }
             return prev + 1;
           });
-        }, 200);
+        }, getAnimationInterval());
         return () => clearInterval(interval);
       }
-    }, [isPlaying]);
+    }, [isPlaying, getAnimationInterval]);
     
     const currentData = climateData.find(d => d.year === currentYear);
     const anomaly = currentData ? currentData.temperature - meanTemp : 0;
@@ -794,6 +960,9 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
               ) : (
                 <span className="text-gray-500">No data available</span>
               )}
+              <span className="ml-2 text-xs px-2 py-1 rounded-full bg-gray-100">
+                {devicePerformance} perf • {animationFrameRate}fps
+              </span>
             </div>
           </div>
           <button
@@ -805,26 +974,38 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
         </div>
         
         <div className="relative h-64 bg-gray-50 rounded-lg p-6">
-          <div className="text-center">
-            <div className="text-3xl font-bold text-blue-600 mb-2">{currentYear}</div>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div className="bg-white p-3 rounded-lg shadow-sm">
+          {/* Canvas for high-performance rendering */}
+          <canvas
+            ref={canvasRef}
+            width={400}
+            height={200}
+            className="w-full h-full rounded-lg"
+            style={{ maxWidth: '100%', height: 'auto' }}
+          />
+          
+          {/* Overlay data cards */}
+          <div className="absolute top-4 left-4 right-4">
+            <div className="text-center mb-4">
+              <div className="text-2xl font-bold text-blue-600">{currentYear}</div>
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="bg-white/90 backdrop-blur-sm p-2 rounded-lg shadow-sm">
                 <div className="text-gray-500">Temperature</div>
-                <div className="text-xl font-semibold">{(currentData?.temperature || 0).toFixed(1)}°C</div>
+                <div className="text-lg font-semibold">{(currentData?.temperature || 0).toFixed(1)}°C</div>
               </div>
-              <div className="bg-white p-3 rounded-lg shadow-sm">
+              <div className="bg-white/90 backdrop-blur-sm p-2 rounded-lg shadow-sm">
                 <div className="text-gray-500">Anomaly</div>
-                <div className={`text-xl font-semibold ${anomaly > 0 ? 'text-red-500' : 'text-blue-500'}`}>
+                <div className={`text-lg font-semibold ${anomaly > 0 ? 'text-red-500' : 'text-blue-500'}`}>
                   {anomaly > 0 ? '+' : ''}{anomaly.toFixed(1)}°C
                 </div>
               </div>
-              <div className="bg-white p-3 rounded-lg shadow-sm">
+              <div className="bg-white/90 backdrop-blur-sm p-2 rounded-lg shadow-sm">
                 <div className="text-gray-500">Hot Days</div>
-                <div className="text-xl font-semibold text-orange-500">{currentData?.hotDays || 0}</div>
+                <div className="text-lg font-semibold text-orange-500">{currentData?.hotDays || 0}</div>
               </div>
-              <div className="bg-white p-3 rounded-lg shadow-sm">
+              <div className="bg-white/90 backdrop-blur-sm p-2 rounded-lg shadow-sm">
                 <div className="text-gray-500">Rainy Days</div>
-                <div className="text-xl font-semibold text-blue-500">{currentData?.rainyDays || 0}</div>
+                <div className="text-lg font-semibold text-blue-500">{currentData?.rainyDays || 0}</div>
               </div>
             </div>
           </div>
@@ -857,7 +1038,7 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
             <div className="flex-1">
               <h2 className="text-2xl font-bold text-gray-900">Climate History Dashboard</h2>
               <p className="text-sm text-gray-500">25 years of climate data analysis (1999-2024)</p>
-              <div className="mt-2 flex items-center gap-2 text-xs">
+              <div className="mt-2 flex flex-col sm:flex-row sm:items-center gap-2 text-xs">
                 {isLoadingData ? (
                   <div className="flex items-center gap-1 text-blue-600">
                     <Loader2 className="w-3 h-3 animate-spin" />
@@ -868,7 +1049,7 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
                     <span>⚠️ Using fallback data</span>
                   </div>
                 ) : climateData.length > 0 ? (
-                  <div className="flex items-center gap-1 text-green-600">
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-1 text-green-600">
                     <span>✅ Real NASA data ({climateData.length} years)</span>
                     <span className="text-gray-500">• {selectedCity.name}</span>
                     <span className="text-gray-500">• {climateData[0]?.year}-{climateData[climateData.length-1]?.year}</span>
@@ -878,23 +1059,106 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
                     <span>No data available</span>
                   </div>
                 )}
+                
+                {/* Performance indicator */}
+                <div className="flex items-center gap-2 text-xs">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                    devicePerformance === 'low' ? 'bg-red-100 text-red-700' :
+                    devicePerformance === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                    'bg-green-100 text-green-700'
+                  }`}>
+                    {devicePerformance} performance
+                  </span>
+                  {isMobile && (
+                    <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-medium">
+                      Mobile optimized
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
           
-          {/* Charts Grid */}
+          {/* Charts Grid with Lazy Loading */}
           <div className="space-y-8 mb-6">
-            <div className="w-full">
-              <TemperatureAnomaliesChart />
+            <div 
+              className="w-full"
+              data-chart-id="temperature"
+              ref={(el) => {
+                if (el && intersectionObserverRef.current) {
+                  intersectionObserverRef.current.observe(el);
+                }
+              }}
+            >
+              {visibleCharts.has('temperature') && <TemperatureAnomaliesChart />}
+              {!visibleCharts.has('temperature') && (
+                <div className="h-80 bg-gray-50 rounded-lg flex items-center justify-center">
+                  <div className="text-center">
+                    <BarChart3 className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                    <p className="text-gray-600">Loading temperature chart...</p>
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="w-full">
-              <ExtremeWeatherChart />
+            
+            <div 
+              className="w-full"
+              data-chart-id="extreme"
+              ref={(el) => {
+                if (el && intersectionObserverRef.current) {
+                  intersectionObserverRef.current.observe(el);
+                }
+              }}
+            >
+              {visibleCharts.has('extreme') && <ExtremeWeatherChart />}
+              {!visibleCharts.has('extreme') && (
+                <div className="h-80 bg-gray-50 rounded-lg flex items-center justify-center">
+                  <div className="text-center">
+                    <BarChart3 className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                    <p className="text-gray-600">Loading extreme weather chart...</p>
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="w-full">
-              <SeasonalShiftChart />
+            
+            <div 
+              className="w-full"
+              data-chart-id="seasonal"
+              ref={(el) => {
+                if (el && intersectionObserverRef.current) {
+                  intersectionObserverRef.current.observe(el);
+                }
+              }}
+            >
+              {visibleCharts.has('seasonal') && <SeasonalShiftChart />}
+              {!visibleCharts.has('seasonal') && (
+                <div className="h-80 bg-gray-50 rounded-lg flex items-center justify-center">
+                  <div className="text-center">
+                    <BarChart3 className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                    <p className="text-gray-600">Loading seasonal shift chart...</p>
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="w-full">
-              <TimeLapseAnimation />
+            
+            <div 
+              className="w-full"
+              data-chart-id="timelapse"
+              ref={(el) => {
+                if (el && intersectionObserverRef.current) {
+                  intersectionObserverRef.current.observe(el);
+                }
+              }}
+            >
+              {visibleCharts.has('timelapse') && <TimeLapseAnimation />}
+              {!visibleCharts.has('timelapse') && (
+                <div className="h-64 bg-gray-50 rounded-lg flex items-center justify-center">
+                  <div className="text-center">
+                    <BarChart3 className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                    <p className="text-gray-600">Loading time-lapse animation...</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           
