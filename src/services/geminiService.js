@@ -447,16 +447,7 @@ Dust Mass Data Summary:
 Provide a comprehensive dust storm analysis in the following structured format:
 
 ## 🌪️ Dust Storm Risk Assessment
-**Risk level:** ${riskLevel}
-- **Maximum concentration:** ${maxDustMass.toExponential(2)} kg/m²
-- **Average concentration:** ${avgDustMass.toExponential(2)} kg/m²
-- **Expected start time:** ${expectedStart}
 
-## 📊 Concentration Analysis
-**Key findings:** [Analysis of dust mass patterns]
-- **Peak values:** [Identify highest concentrations]
-- **Temporal patterns:** [Analysis of hourly variations]
-- **Threshold comparison:** [Compare against safety thresholds]
 
 ## ⚠️ Health & Safety Implications
 **Key findings:** [Health and safety considerations]

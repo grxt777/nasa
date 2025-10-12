@@ -27,7 +27,10 @@ class DustMassService {
       const base = import.meta.env.BASE_URL || '/';
       const url = `${base.replace(/\/$/, '')}/nasa_dusmass25/${fileName}`;
       
+      console.log('🌪️ Загружаем dust mass данные по URL:', url);
       const response = await fetch(url);
+      console.log('📡 Ответ сервера:', response.status, response.statusText);
+      
       if (!response.ok) {
         throw new Error(`Failed to load dust mass data: ${response.status}`);
       }
@@ -172,6 +175,12 @@ class DustMassService {
     
     if (filteredData.length > 0) {
       console.log('📋 Пример отфильтрованной записи:', filteredData[0]);
+    } else {
+      console.log('⚠️ Нет данных для фильтрации! Проверьте:');
+      console.log('  - Город:', cityName);
+      console.log('  - Дата:', dateString);
+      console.log('  - Целевой день года:', `${targetMonth}-${targetDay}`);
+      console.log('  - Всего записей в файле:', data.length);
     }
 
     // Convert to our format

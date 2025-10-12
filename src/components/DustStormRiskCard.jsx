@@ -300,9 +300,10 @@ const DustStormRiskCard = ({ selectedCity, selectedDate }) => {
   };
 
   // Don't render the card if there's no data
-  if (!hasData && !isLoading) {
-    return null;
-  }
+  // Временно отключено для отладки
+  // if (!hasData && !isLoading) {
+  //   return null;
+  // }
 
   return (
     <AnimatedCard direction="scale" delay={300} duration={700}>
@@ -315,6 +316,18 @@ const DustStormRiskCard = ({ selectedCity, selectedDate }) => {
             <h2 className="text-2xl font-bold text-gray-900">Dust Storm Risk</h2>
             <p className="text-sm text-gray-500">Historical analysis for {selectedDate} (1999-2025)</p>
           </div>
+        </div>
+
+        {/* Debug info */}
+        <div className="mb-4 p-3 bg-gray-100 rounded text-xs">
+          <div><strong>Debug Info:</strong></div>
+          <div>City: {selectedCity?.name || 'N/A'}</div>
+          <div>Date: {selectedDate || 'N/A'}</div>
+          <div>HasData: {hasData ? 'true' : 'false'}</div>
+          <div>IsLoading: {isLoading ? 'true' : 'false'}</div>
+          <div>Error: {error || 'none'}</div>
+          <div>DustData: {dustData ? `${dustData.length} records` : 'null'}</div>
+          <div>RiskLevel: {riskLevel ? riskLevel.level : 'null'}</div>
         </div>
 
         {isLoading ? (
