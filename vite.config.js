@@ -7,9 +7,9 @@ import { resolve } from 'path'
 export default defineConfig({
   plugins: [
     react(),
-    // Plugin to copy Cesium assets
+    // Plugin to copy Cesium assets and dust mass data
     {
-      name: 'cesium-assets',
+      name: 'copy-assets',
       buildStart() {
         // Copy Cesium assets to public directory
         try {
@@ -25,6 +25,20 @@ export default defineConfig({
           console.log('Cesium assets directory ready');
         } catch (error) {
           console.warn('Could not setup Cesium assets:', error.message)
+        }
+
+        // Copy dust mass data to public directory
+        try {
+          const dustMassPath = resolve('nasa_dusmass25');
+          const publicDustMassPath = resolve('public/nasa_dusmass25');
+          
+          if (!existsSync(publicDustMassPath)) {
+            mkdirSync(publicDustMassPath, { recursive: true });
+          }
+          
+          console.log('Dust mass data directory ready');
+        } catch (error) {
+          console.warn('Could not setup dust mass data:', error.message)
         }
       }
     }
