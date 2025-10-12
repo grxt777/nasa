@@ -1,7 +1,5 @@
 import Papa from 'papaparse';
 import { mean, standardDeviation, linearRegression, median } from 'simple-statistics';
-import fs from 'fs';
-import path from 'path';
 
 export const parseCSVData = (csvText) => {
   return new Promise((resolve, reject) => {
@@ -492,60 +490,8 @@ export const calculateDetailedWeatherStats = (filteredData) => {
   };
 };
 
-/**
- * Robustly finds and loads a city's CSV file, similar to the Python load_city_data.
- * Returns a Promise that resolves to parsed data (array of objects).
- */
-export const loadCityData = async (city) => {
-  // Get all files in the data directory
-  const files = fs.readdirSync(DATA_DIR);
-  const searchName = city.replace(/ /g, '_');
-
-  // First pass: partial match in file name
-  let matchingFiles = files.filter(file => {
-    if (file.startsWith('nasa_weather_') && file.endsWith('_1999_2024.csv')) {
-      const cityNameInFile = file.replace('nasa_weather_', '').replace('_1999_2024.csv', '');
-      return (
-        cityNameInFile.toLowerCase().includes(searchName.toLowerCase()) ||
-        searchName.toLowerCase().includes(cityNameInFile.toLowerCase())
-      );
-    }
-    return false;
-  });
-
-  // Second pass: match all city words (length > 2)
-  if (matchingFiles.length === 0) {
-    const cityWords = city.toLowerCase().split(' ');
-    for (const file of files) {
-      if (file.startsWith('nasa_weather_') && file.endsWith('_1999_2024.csv')) {
-        const cityNameInFile = file.replace('nasa_weather_', '').replace('_1999_2024.csv', '').toLowerCase();
-        if (cityWords.filter(w => w.length > 2).every(word => cityNameInFile.includes(word))) {
-          matchingFiles.push(file);
-          break;
-        }
-      }
-    }
-  }
-
-  if (matchingFiles.length === 0) {
-    const availableCities = files
-      .filter(f => f.startsWith('nasa_weather_'))
-      .map(f => f.replace('nasa_weather_', '').replace('_1999_2024.csv', ''));
-    throw new Error(
-      `File for city '${city}' not found.\nAvailable cities: ${availableCities.sort().join(', ')}`
-    );
-  }
-
-  if (matchingFiles.length > 1) {
-    console.warn(`⚠️ Multiple matches found: ${matchingFiles}`);
-    console.warn(`📁 Using file: ${matchingFiles[0]}`);
-  }
-
-  const filepath = path.join(DATA_DIR, matchingFiles[0]);
-  const csvText = fs.readFileSync(filepath, 'utf8');
-  // Use existing parseCSVData to parse
-  return await parseCSVData(csvText);
-};
+// loadCityData function removed - it used Node.js fs and path modules
+// This functionality is now handled by nasaDataService.js in the browser
 
 /**
  * Returns all records within ±window days of year for all years, for a given date string (YYYY-MM-DD).
