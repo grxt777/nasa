@@ -82,45 +82,102 @@ class NasaDataService {
 
   async findCityFile(cityName) {
     try {
-      console.log('🔍 Поиск файла для города:', cityName);
-      
-      // Сначала проверяем альтернативные варианты для городов с особыми названиями
-      const alternatives = [
-        { city: 'Barrow (Utqiagvik)', file: 'nasa_weather_Barrow_Utqiagvik_1999_2024.csv' },
-        { city: 'New York', file: 'nasa_weather_New_York_City_1999_2024.csv' },
-        { city: 'Mexico City', file: 'nasa_weather_Mexico_City_1999_2024.csv' },
-        { city: 'Los Angeles', file: 'nasa_weather_Los_Angeles_1999_2024.csv' },
-        { city: 'Buenos Aires', file: 'nasa_weather_Buenos_Aires_1999_2024.csv' },
-        { city: 'Haines Junction', file: 'nasa_weather_Haines_Junction_1999_2024.csv' },
-        { city: 'Puerto Williams', file: 'nasa_weather_Puerto_Williams_1999_2024.csv' },
-        { city: 'Port Vila', file: 'nasa_weather_Port_Vila_1999_2024.csv' },
-        { city: 'Nuku\'alofa', file: 'nasa_weather_Nuku_alofa_1999_2024.csv' }
-      ];
-      
-      console.log('🔍 Проверяем альтернативы для:', cityName);
-      
-      // Ищем альтернативный файл
-      const alternative = alternatives.find(alt => {
-        const matches = alt.city.toLowerCase() === cityName.toLowerCase();
-        console.log(`🔍 Сравнение: "${alt.city}" === "${cityName}" = ${matches}`);
-        return matches;
-      });
-      
-      if (alternative) {
-        console.log(`✅ Используем альтернативный файл: ${alternative.file}`);
-        return alternative.file;
+      // Проверяем кэш
+      const cacheKey = `cityFile_${cityName.toLowerCase()}`;
+      if (this.cache.has(cacheKey)) {
+        return this.cache.get(cacheKey);
       }
       
-      // Если альтернатива не найдена, формируем имя файла стандартным способом
-      const fileName = `nasa_weather_${cityName.replace(/ /g, '_')}_1999_2024.csv`;
-      console.log(`📁 Стандартный файл: ${fileName}`);
+      // Нормализуем название города для поиска
+      const normalizedCityName = this.normalizeCityName(cityName);
       
-      return fileName;
+      // Генерируем возможные варианты имени файла
+      const possibleFileNames = this.generatePossibleFileNames(normalizedCityName);
+      
+      // Проверяем существование файлов
+      for (const fileName of possibleFileNames) {
+        try {
+          const base = import.meta?.env?.BASE_URL || '/';
+          const url = `${base.replace(/\/$/, '')}/nasa_weather_data/${fileName}`;
+          
+          // Проверяем существование файла через HEAD запрос
+          const response = await fetch(url, { method: 'HEAD' });
+          if (response.ok) {
+            // Кэшируем результат
+            this.cache.set(cacheKey, fileName);
+            return fileName;
+          }
+        } catch (error) {
+          // Продолжаем поиск
+          continue;
+        }
+      }
+      
+      // Если файл не найден, возвращаем наиболее вероятное имя
+      const fallbackFileName = `nasa_weather_${normalizedCityName.replace(/ /g, '_')}_1999_2024.csv`;
+      // Кэшируем fallback результат
+      this.cache.set(cacheKey, fallbackFileName);
+      return fallbackFileName;
       
     } catch (error) {
       console.error('Ошибка поиска файла:', error);
       throw error;
     }
+  }
+
+  // Нормализация названия города
+  normalizeCityName(cityName) {
+    return cityName
+      .trim()
+      .replace(/\([^)]*\)/g, '') // Удаляем скобки и их содержимое
+      .replace(/['"]/g, '') // Удаляем кавычки
+      .replace(/\s+/g, ' ') // Нормализуем пробелы
+      .trim();
+  }
+
+  // Генерация возможных имен файлов
+  generatePossibleFileNames(normalizedCityName) {
+    const baseName = normalizedCityName.replace(/[^a-zA-Z0-9\s]/g, '').trim();
+    const variants = [];
+    
+    // Основной вариант
+    variants.push(`nasa_weather_${baseName.replace(/\s+/g, '_')}_1999_2024.csv`);
+    
+    // Варианты с заменой пробелов на подчеркивания
+    variants.push(`nasa_weather_${baseName.replace(/\s+/g, '_')}_1999_2024.csv`);
+    
+    // Варианты для городов с составными названиями
+    const words = baseName.split(/\s+/);
+    if (words.length > 1) {
+      // Соединяем слова подчеркиваниями
+      variants.push(`nasa_weather_${words.join('_')}_1999_2024.csv`);
+      
+      // Для некоторых городов добавляем суффикс "City"
+      if (!baseName.toLowerCase().includes('city')) {
+        variants.push(`nasa_weather_${words.join('_')}_City_1999_2024.csv`);
+      }
+    }
+    
+    // Специальные случаи для известных городов
+    const specialCases = {
+      'new york': 'nasa_weather_New_York_City_1999_2024.csv',
+      'mexico city': 'nasa_weather_Mexico_City_1999_2024.csv',
+      'los angeles': 'nasa_weather_Los_Angeles_1999_2024.csv',
+      'buenos aires': 'nasa_weather_Buenos_Aires_1999_2024.csv',
+      'haines junction': 'nasa_weather_Haines_Junction_1999_2024.csv',
+      'puerto williams': 'nasa_weather_Puerto_Williams_1999_2024.csv',
+      'port vila': 'nasa_weather_Port_Vila_1999_2024.csv',
+      'nuku alofa': 'nasa_weather_Nuku_alofa_1999_2024.csv',
+      'barrow utqiagvik': 'nasa_weather_Barrow_Utqiagvik_1999_2024.csv'
+    };
+    
+    const lowerCityName = baseName.toLowerCase();
+    if (specialCases[lowerCityName]) {
+      variants.unshift(specialCases[lowerCityName]); // Добавляем в начало списка
+    }
+    
+    // Удаляем дубликаты
+    return [...new Set(variants)];
   }
 
   parseCSVData(csvText) {
@@ -154,20 +211,74 @@ class NasaDataService {
 
   // Filter data by city and day of year with ±5 day window (Python compatible)
   filterDataByCityAndDOY(data, cityName, dayOfYear, window = 5) {
-    return data.filter(record => {
+    const filteredData = data.filter(record => {
       const recordCity = record.CITY || record.city || '';
       const recordDOY = parseInt(record.DOY || record.doy || 0);
       
-      // Normalize city names by replacing underscores with spaces and converting to lowercase
-      const normalizedRecordCity = recordCity.toLowerCase().replace(/_/g, ' ');
-      const normalizedCityName = cityName.toLowerCase().replace(/_/g, ' ');
+      // Улучшенная нормализация названий городов
+      const normalizedRecordCity = this.normalizeCityNameForMatching(recordCity);
+      const normalizedCityName = this.normalizeCityNameForMatching(cityName);
       
-      // Проверяем совпадение города и попадание в окно ±window дней
-      const cityMatch = normalizedRecordCity === normalizedCityName;
+      // Проверяем совпадение города с улучшенной логикой
+      const cityMatch = this.isCityMatch(normalizedRecordCity, normalizedCityName);
       const doyMatch = recordDOY >= (dayOfYear - window) && recordDOY <= (dayOfYear + window);
       
       return cityMatch && doyMatch;
     });
+    
+    return filteredData;
+  }
+
+  // Нормализация названия города для сопоставления
+  normalizeCityNameForMatching(cityName) {
+    return cityName
+      .toLowerCase()
+      .replace(/_/g, ' ') // Заменяем подчеркивания на пробелы
+      .replace(/[^a-zA-Z0-9\s]/g, '') // Удаляем специальные символы
+      .replace(/\s+/g, ' ') // Нормализуем пробелы
+      .trim();
+  }
+
+  // Улучшенная логика сопоставления городов
+  isCityMatch(recordCity, targetCity) {
+    // Точное совпадение
+    if (recordCity === targetCity) {
+      return true;
+    }
+    
+    // Проверяем, содержит ли одно название другое
+    if (recordCity.includes(targetCity) || targetCity.includes(recordCity)) {
+      return true;
+    }
+    
+    // Специальные случаи для известных городов
+    const cityMappings = {
+      'new york': ['new york city', 'nyc'],
+      'mexico city': ['mexico'],
+      'los angeles': ['la'],
+      'buenos aires': ['buenos'],
+      'haines junction': ['haines'],
+      'puerto williams': ['puerto'],
+      'port vila': ['port'],
+      'nuku alofa': ['nuku'],
+      'barrow utqiagvik': ['barrow', 'utqiagvik']
+    };
+    
+    const lowerTargetCity = targetCity.toLowerCase();
+    const lowerRecordCity = recordCity.toLowerCase();
+    
+    // Проверяем специальные случаи
+    for (const [key, variants] of Object.entries(cityMappings)) {
+      if (lowerTargetCity === key) {
+        for (const variant of variants) {
+          if (lowerRecordCity.includes(variant) || variant.includes(lowerRecordCity)) {
+            return true;
+          }
+        }
+      }
+    }
+    
+    return false;
   }
 
   // Get weather data for specific city and date with ±5 day window
@@ -190,6 +301,7 @@ class NasaDataService {
       throw error;
     }
   }
+
 
   // Clear cache (useful for testing or memory management)
   clearCache() {

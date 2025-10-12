@@ -39,7 +39,13 @@ export const useWeatherData = () => {
       console.log(`Found ${weatherDataResult.totalRecords} records for ${city.name} within ±${weatherDataResult.window} days of ${selectedDate}`);
       
       if (weatherDataResult.data.length === 0) {
-        setError(`Нет данных для ${city.name} на ${selectedDate} (±5 дней). Попробуйте другую дату.`);
+        // Проверяем, есть ли данные вообще для этого города
+        const allCityData = await nasaDataService.loadCityData(city.name, null);
+        if (allCityData.length === 0) {
+          setError(`Город "${city.name}" не найден в базе данных NASA. Проверьте правильность написания или выберите другой город.`);
+        } else {
+          setError(`Нет данных для ${city.name} на ${selectedDate} (±5 дней). Попробуйте другую дату.`);
+        }
         setWeatherData(null);
         setTrendData(null);
         return;
@@ -92,6 +98,7 @@ export const useWeatherData = () => {
   return {
     weatherData,
     trendData,
+    setTrendData,
     isLoading,
     loadingProgress,
     loadingStage,

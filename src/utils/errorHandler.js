@@ -258,7 +258,9 @@ export const createFallbackData = (type) => {
       values: []
     },
     aiAnalysis: 'Анализ временно недоступен. Попробуйте позже.',
-    alternativeDates: 'Альтернативные даты временно недоступны. Попробуйте позже.'
+    alternativeDates: 'Альтернативные даты временно недоступны. Попробуйте позже.',
+    climateInsights: 'Климатический анализ временно недоступен. Попробуйте позже.',
+    dustStormAnalysis: 'Анализ пыльных бурь временно недоступен. Попробуйте позже.'
   };
   
   return fallbacks[type] || null;

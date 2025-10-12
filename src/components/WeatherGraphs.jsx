@@ -23,6 +23,18 @@ ChartJS.register(
 );
 
 const WeatherGraphs = ({ weatherData, trendData, selectedVariable, onVariableChange }) => {
+  const [isUpdating, setIsUpdating] = React.useState(false);
+
+  // Отладочные логи
+  React.useEffect(() => {
+    console.log('📊 WeatherGraphs получил новые данные:', {
+      selectedVariable,
+      trendDataLabels: trendData?.labels?.length || 0,
+      trendDataValues: trendData?.values?.length || 0,
+      trendDataSample: trendData?.values?.slice(0, 3) || []
+    });
+  }, [trendData, selectedVariable]);
+
   if (!weatherData || !trendData) {
     return null;
   }
@@ -55,6 +67,9 @@ const WeatherGraphs = ({ weatherData, trendData, selectedVariable, onVariableCha
       }
     ]
   };
+
+  // Проверяем, есть ли данные для отображения
+  const hasData = trendData.values && trendData.values.length > 0 && trendData.values.some(v => v !== 0);
 
   const chartOptions = {
     responsive: true,
@@ -132,23 +147,53 @@ const WeatherGraphs = ({ weatherData, trendData, selectedVariable, onVariableCha
           
           <div className="flex items-center gap-2">
             <label className="text-sm font-medium text-gray-700">Variable:</label>
-            <select
-              value={selectedVariable}
-              onChange={(e) => onVariableChange(e.target.value)}
-              className="px-3 py-1 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            >
-              {variableOptions.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                value={selectedVariable}
+                onChange={async (e) => {
+                  setIsUpdating(true);
+                  try {
+                    await onVariableChange(e.target.value);
+                  } finally {
+                    setIsUpdating(false);
+                  }
+                }}
+                disabled={isUpdating}
+                className={`appearance-none px-3 py-2 pr-8 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white cursor-pointer transition-colors ${
+                  isUpdating ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                {variableOptions.map(option => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                {isUpdating ? (
+                  <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
         <div className="bg-gray-50 rounded-lg p-2 sm:p-3">
           <div className="h-40 sm:h-52 md:h-64 lg:h-72 xl:h-80 max-w-full overflow-hidden">
-            <Line data={chartData} options={chartOptions} />
+            {hasData ? (
+              <Line data={chartData} options={chartOptions} />
+            ) : (
+              <div className="h-full flex items-center justify-center">
+                <div className="text-center text-gray-500">
+                  <div className="text-lg font-medium">No data available</div>
+                  <div className="text-sm">for {selectedOption?.label || 'selected variable'}</div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

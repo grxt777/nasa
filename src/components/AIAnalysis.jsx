@@ -6,6 +6,7 @@ import {
 import geminiService from '../services/geminiService';
 import nasaDataService from '../services/nasaDataService';
 import { calculateDetailedWeatherStats } from '../utils/dataProcessing';
+import AnimatedCard from './AnimatedCard';
 
 const AIAnalysis = ({ weatherData, selectedCity, selectedDate, selectedEvent }) => {
   const [aiAnalysis, setAIAnalysis] = useState('');
@@ -186,40 +187,42 @@ const AIAnalysis = ({ weatherData, selectedCity, selectedDate, selectedEvent }) 
   return (
     <div className="space-y-6">
       {/* Main AI Analysis Card */}
-      <div className="nasa-card mb-4 sm:mb-6">
-        <div className="flex items-center gap-4 mb-6">
-          <div className="p-4 rounded-xl bg-blue-50">
-            <Brain className="w-8 h-8 text-blue-600" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">AI Day Analysis</h2>
-            <p className="text-sm text-gray-500">Deep analysis of weather conditions</p>
-          </div>
-        </div>
-        {isLoadingSuggestions ? (
-              <div className="flex items-center gap-2 text-blue-600">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-sm">Loading AI analysis...</span>
-              </div>
-        ) : suggestionsError ? (
-          <div className="text-red-600 font-medium">{suggestionsError}</div>
-        ) : aiAnalysis ? (
-          <div className="space-y-1">
-            <div className="text-base text-gray-800 leading-relaxed">
-              {formatAIText(aiAnalysis)}
+      <AnimatedCard direction="scale" delay={200} duration={800}>
+        <div className="nasa-card mb-4 sm:mb-6">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="p-4 rounded-xl bg-blue-50">
+              <Brain className="w-8 h-8 text-blue-600" />
             </div>
-            {aiTruncated && (
-              <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-yellow-800 text-sm">
-                  ⚠️ Ответ был обрезан из-за ограничения длины. Попробуйте упростить запрос.
-                </p>
-              </div>
-            )}
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">AI Day Analysis</h2>
+              <p className="text-sm text-gray-500">Deep analysis of weather conditions</p>
+            </div>
           </div>
-        ) : (
-          <div className="text-gray-400 text-sm">Нет анализа для выбранных параметров.</div>
-        )}
-      </div>
+          {isLoadingSuggestions ? (
+                <div className="flex items-center gap-2 text-blue-600">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-sm">Loading AI analysis...</span>
+                </div>
+          ) : suggestionsError ? (
+            <div className="text-red-600 font-medium">{suggestionsError}</div>
+          ) : aiAnalysis ? (
+            <div className="space-y-1">
+              <div className="text-base text-gray-800 leading-relaxed">
+                {formatAIText(aiAnalysis)}
+              </div>
+              {aiTruncated && (
+                <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-yellow-800 text-sm">
+                    ⚠️ Ответ был обрезан из-за ограничения длины. Попробуйте упростить запрос.
+                  </p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-gray-400 text-sm">Нет анализа для выбранных параметров.</div>
+          )}
+        </div>
+      </AnimatedCard>
     </div>
   );
 };

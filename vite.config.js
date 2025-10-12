@@ -1,9 +1,34 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { copyFileSync, mkdirSync, existsSync } from 'fs'
+import { resolve } from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    // Plugin to copy Cesium assets
+    {
+      name: 'cesium-assets',
+      buildStart() {
+        // Copy Cesium assets to public directory
+        try {
+          const cesiumPath = resolve('node_modules/cesium/Build/Cesium');
+          const publicCesiumPath = resolve('public/Cesium');
+          
+          if (!existsSync(publicCesiumPath)) {
+            mkdirSync(publicCesiumPath, { recursive: true });
+          }
+          
+          // Use a simple approach - just ensure the directory exists
+          // The files are already copied manually
+          console.log('Cesium assets directory ready');
+        } catch (error) {
+          console.warn('Could not setup Cesium assets:', error.message)
+        }
+      }
+    }
+  ],
   base: '/',
   build: {
     outDir: 'dist',
@@ -15,6 +40,7 @@ export default defineConfig({
           'react-vendor': ['react', 'react-dom'],
           'chart-vendor': ['chart.js', 'react-chartjs-2'],
           'map-vendor': ['leaflet', 'react-leaflet'],
+          'cesium-vendor': ['cesium'],
           'ui-vendor': ['lucide-react'],
           'utils-vendor': ['date-fns', 'simple-statistics', 'papaparse']
         }
@@ -39,6 +65,7 @@ export default defineConfig({
       'react',
       'react-dom',
       'leaflet',
+      'cesium',
       'chart.js',
       'react-chartjs-2',
       'lucide-react',
@@ -46,5 +73,9 @@ export default defineConfig({
       'simple-statistics',
       'papaparse'
     ]
+  },
+  // Define global variables for Cesium
+  define: {
+    CESIUM_BASE_URL: JSON.stringify('/Cesium/')
   }
 })

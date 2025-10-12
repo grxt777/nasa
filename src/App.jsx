@@ -2,14 +2,18 @@ import React, { useState, useEffect, Suspense, lazy } from 'react';
 import Sidebar from './components/Sidebar';
 import LoadingSpinner from './components/LoadingSpinner';
 import LoadingSkeleton from './components/LoadingSkeleton';
+import ProgressBar from './components/ProgressBar';
 import { useWeatherData } from './hooks/useWeatherData';
 import { cities } from './data/cities';
 import { Menu, X } from 'lucide-react';
+import { generateTrendData } from './utils/dataProcessing';
+import nasaDataService from './services/nasaDataService';
 
 // Lazy load heavy components
 const LeafletMap = lazy(() => import('./components/LeafletMap'));
 const WeatherCards = lazy(() => import('./components/WeatherCards'));
 const WeatherGraphs = lazy(() => import('./components/WeatherGraphs'));
+const DustStormRiskCard = lazy(() => import('./components/DustStormRiskCard'));
 const AIAnalysis = lazy(() => import('./components/AIAnalysis'));
 const AlternativeDates = lazy(() => import('./components/AlternativeDates'));
 const ApiKeyConfig = lazy(() => import('./components/ApiKeyConfig'));
@@ -31,6 +35,7 @@ function App() {
   const {
     weatherData,
     trendData,
+    setTrendData,
     isLoading,
     loadingProgress,
     loadingStage,
@@ -85,12 +90,23 @@ function App() {
     setSelectedEvent(event);
   };
 
-  const handleVariableChange = (variable) => {
-    // Сбрасываем данные при изменении переменной
-    resetData();
+  const handleVariableChange = async (variable) => {
+    console.log('🔄 Обновление переменной:', variable);
+    // Обновляем только переменную и тренды, не сбрасываем основные данные
     setSelectedVariable(variable);
     if (selectedCity && selectedDate) {
-      analyzeWeatherData(selectedCity, selectedDate, variable);
+      // Обновляем только тренды для новой переменной
+      try {
+        console.log('📊 Загрузка данных для города:', selectedCity.name);
+        const allCityData = await nasaDataService.loadCityData(selectedCity.name, null);
+        console.log('📈 Данные загружены, записей:', allCityData.length);
+        const trends = generateTrendData(allCityData, variable);
+        console.log('📊 Сгенерированные тренды:', trends);
+        setTrendData(trends);
+        console.log('✅ Тренды обновлены');
+      } catch (error) {
+        console.error('Error updating trends:', error);
+      }
     }
   };
 
@@ -450,17 +466,27 @@ function App() {
               {isLoading ? (
                 <LoadingSkeleton type="card" count={6} />
               ) : hasData ? (
-                <Suspense fallback={<LoadingSkeleton type="card" count={6} />}>
-                  <WeatherCards 
-                    weatherData={weatherData} 
-                    selectedCity={selectedCity}
-                    selectedDate={selectedDate}
-                    selectedEvent={selectedEvent}
-                  />
-                </Suspense>
+                <>
+                  <Suspense fallback={<LoadingSkeleton type="card" count={6} />}>
+                    <WeatherCards 
+                      weatherData={weatherData} 
+                      selectedCity={selectedCity}
+                      selectedDate={selectedDate}
+                      selectedEvent={selectedEvent}
+                    />
+                  </Suspense>
+
+                  {/* Dust Storm Risk Card */}
+                  <div className="mt-6">
+                    <DustStormRiskCard 
+                      selectedCity={selectedCity}
+                      selectedDate={selectedDate}
+                    />
+                  </div>
+                </>
               ) : (
                 <div className="text-center py-8 text-gray-500">
-                  
+                  No weather data available
                 </div>
               )}
             </div>

@@ -1,7 +1,9 @@
-import React, { useEffect, useRef, memo, useCallback } from 'react';
+import React, { useEffect, useRef, memo, useCallback, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import AdvancedWeatherEffectsRenderer from '../utils/advancedWeatherEffects';
+import { ChevronDown, Map, Globe } from 'lucide-react';
+import Map3D from './Map3D';
 
 // Fix for default markers in Leaflet with Vite
 delete L.Icon.Default.prototype._getIconUrl;
@@ -17,6 +19,9 @@ const LeafletMap = memo(({ selectedCity, onCitySelect, cities, weatherData, onMa
   const markersRef = useRef([]);
   const effectsRendererRef = useRef(null);
   const userMarkerRef = useRef(null);
+  const [mapMode, setMapMode] = useState('2d'); // '2d' или '3d'
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
 
   useEffect(() => {
     if (!mapRef.current) return;
@@ -233,7 +238,10 @@ const LeafletMap = memo(({ selectedCity, onCitySelect, cities, weatherData, onMa
     const startEffectsWithDelay = () => {
       try {
         // Проверяем готовность карты перед запуском эффектов
-        if (mapInstanceRef.current && effectsRendererRef.current) {
+        if (mapInstanceRef.current && 
+            effectsRendererRef.current && 
+            mapInstanceRef.current._loaded &&
+            mapInstanceRef.current._container) {
           effectsRendererRef.current.renderWeatherEffects(selectedCity.name, effectsData);
         }
       } catch (error) {
@@ -242,7 +250,7 @@ const LeafletMap = memo(({ selectedCity, onCitySelect, cities, weatherData, onMa
     };
 
     // Add longer delay to ensure map is fully ready
-    setTimeout(startEffectsWithDelay, 500);
+    setTimeout(startEffectsWithDelay, 1000);
 
     // Update tooltip of selected city with weather data
     if (markersRef.current.length > 0) {
@@ -321,12 +329,106 @@ const LeafletMap = memo(({ selectedCity, onCitySelect, cities, weatherData, onMa
     }
   }, [isWaitingForMapClick]);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Force re-render when switching back to 2D
+  useEffect(() => {
+    if (mapMode === '2d' && mapInstanceRef.current) {
+      // Force map to re-render when switching back to 2D
+      setTimeout(() => {
+        try {
+          if (mapInstanceRef.current && mapInstanceRef.current._loaded) {
+            mapInstanceRef.current.invalidateSize();
+            const center = mapInstanceRef.current.getCenter();
+            const zoom = mapInstanceRef.current.getZoom();
+            if (center && zoom) {
+              mapInstanceRef.current.setView(center, zoom);
+            }
+          }
+        } catch (error) {
+          console.log('Error re-rendering 2D map:', error);
+        }
+      }, 200);
+    }
+  }, [mapMode]);
+
   return (
     <div className="relative w-full max-w-full h-64 sm:h-72 md:h-80 lg:h-96 xl:h-[500px] rounded-lg overflow-hidden border border-blue-100 shadow-md">
-      <div ref={mapRef} className="w-full h-full" style={{ maxWidth: '100%' }} />
+      {/* Render 2D or 3D map based on mode */}
+      {mapMode === '2d' ? (
+        <div ref={mapRef} className="w-full h-full" style={{ maxWidth: '100%' }} />
+      ) : (
+        <Map3D
+          selectedCity={selectedCity}
+          onCitySelect={onCitySelect}
+          cities={cities}
+          weatherData={weatherData}
+          onMapClick={onMapClick}
+          isWaitingForMapClick={isWaitingForMapClick}
+        />
+      )}
       
-      {/* Map Click Mode Indicator */}
-      {isWaitingForMapClick && (
+      {/* Map Mode Dropdown */}
+      <div className="absolute top-4 right-4 z-20">
+        <div className="relative" ref={dropdownRef}>
+          <button
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="flex items-center gap-2 bg-white hover:bg-gray-50 text-gray-700 px-3 py-2 rounded-lg shadow-md border border-gray-200 transition-colors duration-200"
+          >
+            {mapMode === '2d' ? <Map className="w-4 h-4" /> : <Globe className="w-4 h-4" />}
+            <span className="text-sm font-medium">
+              {mapMode === '2d' ? '2D Карта' : '3D Карта'}
+            </span>
+            <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+          </button>
+          
+          {isDropdownOpen && (
+            <div className="absolute top-full right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-30">
+              <button
+                onClick={() => {
+                  setMapMode('2d');
+                  setIsDropdownOpen(false);
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-50 transition-colors duration-200 ${
+                  mapMode === '2d' ? 'bg-blue-50 text-blue-600' : 'text-gray-700'
+                }`}
+              >
+                <Map className="w-4 h-4" />
+                <span>2D Карта</span>
+                {mapMode === '2d' && <div className="w-2 h-2 bg-blue-600 rounded-full ml-auto"></div>}
+              </button>
+              <button
+                onClick={() => {
+                  setMapMode('3d');
+                  setIsDropdownOpen(false);
+                }}
+                className={`w-full flex items-center gap-3 px-4 py-2 text-sm hover:bg-gray-50 transition-colors duration-200 ${
+                  mapMode === '3d' ? 'bg-blue-50 text-blue-600' : 'text-gray-700'
+                }`}
+              >
+                <Globe className="w-4 h-4" />
+                <span>3D Карта</span>
+                {mapMode === '3d' && <div className="w-2 h-2 bg-blue-600 rounded-full ml-auto"></div>}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+      
+      {/* Map Click Mode Indicator - only show for 2D mode */}
+      {isWaitingForMapClick && mapMode === '2d' && (
         <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg z-10">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>

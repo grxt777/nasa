@@ -9,12 +9,6 @@ const WeatherCards = memo(({ weatherData, selectedCity, selectedDate, selectedEv
   const [isLoadingComments, setIsLoadingComments] = useState(false);
   const [commentsError, setCommentsError] = useState('');
 
-  useEffect(() => {
-    if (weatherData && selectedCity && selectedDate) {
-      loadAIComments();
-    }
-  }, [loadAIComments]);
-
   const loadAIComments = useCallback(async () => {
     setIsLoadingComments(true);
     setCommentsError('');
@@ -49,6 +43,12 @@ const WeatherCards = memo(({ weatherData, selectedCity, selectedDate, selectedEv
       setIsLoadingComments(false);
     }
   }, [weatherData, selectedCity, selectedDate, selectedEvent]);
+
+  useEffect(() => {
+    if (weatherData && selectedCity && selectedDate) {
+      loadAIComments();
+    }
+  }, [loadAIComments, weatherData, selectedCity, selectedDate]);
 
   if (!weatherData) {
     return null;

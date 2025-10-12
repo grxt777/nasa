@@ -120,7 +120,7 @@ const ClimateHistoryDashboard = ({ weatherData, selectedCity, selectedDate }) =>
                 <BarChart3 className="w-8 h-8 text-green-600" />
               </div>
               <div className="flex-1">
-                <h2 className="text-2xl font-bold text-gray-900">Climate History Dashboard</h2>
+                <h2 className="text-2xl font-bold text-gray-900">Climate History</h2>
                 <p className="text-sm text-gray-500">25 years of climate data analysis (1999-2024)</p>
                 <div className="mt-2 flex items-center gap-2 text-xs">
                   <div className="flex items-center gap-1 text-gray-500">
@@ -211,7 +211,7 @@ const ClimateHistoryDashboard = ({ weatherData, selectedCity, selectedDate }) =>
           break;
           
         case 'extreme-weather-chart':
-          csvData = 'Year,Hot Days,Rainy Days,Total Extreme Days\n';
+          csvData = 'Year,Hot Days (>30°C),Rainy Days (>20mm),Total Extreme Days\n';
           climateData.forEach(d => {
             csvData += `${d.year},${d.hotDays || 0},${d.rainyDays || 0},${(d.hotDays || 0) + (d.rainyDays || 0)}\n`;
           });
@@ -226,7 +226,7 @@ const ClimateHistoryDashboard = ({ weatherData, selectedCity, selectedDate }) =>
           break;
           
         case 'timelapse-chart':
-          csvData = 'Year,Temperature,Anomaly,Hot Days,Rainy Days\n';
+          csvData = 'Year,Temperature,Anomaly,Hot Days (>30°C),Rainy Days (>20mm)\n';
           climateData.forEach(d => {
             const anomaly = d.temperature - meanTemp;
             csvData += `${d.year},${d.temperature.toFixed(2)},${anomaly.toFixed(2)},${d.hotDays || 0},${d.rainyDays || 0}\n`;
@@ -259,7 +259,7 @@ const ClimateHistoryDashboard = ({ weatherData, selectedCity, selectedDate }) =>
         climateData: climateData,
         meanTemperature: meanTemp,
         insights: aiInsights,
-        auditLog: auditLog.slice(-10) // Last 10 entries
+        auditLog: [] // Audit log not implemented
       };
       
       // For now, export as JSON (in a real app, you'd use a PDF library like jsPDF)
@@ -275,6 +275,72 @@ const ClimateHistoryDashboard = ({ weatherData, selectedCity, selectedDate }) =>
       setIsExporting(false);
     }
   }, [selectedCity, selectedDate, dataError, devicePerformance, climateData, meanTemp, aiInsights]);
+
+  // Format AI insights with proper markdown-like styling
+  const formatAIInsights = (text) => {
+    if (!text) return null;
+    
+    // Split text into lines and process each line
+    const lines = text.split('\n').filter(line => line.trim());
+    const formattedElements = [];
+    
+    lines.forEach((line, index) => {
+      const trimmedLine = line.trim();
+      
+      // Skip empty lines
+      if (!trimmedLine) return;
+      
+      // Check for headers (lines starting with ##)
+      if (trimmedLine.startsWith('## ')) {
+        formattedElements.push(
+          <div key={index} className="mt-4 mb-3">
+            <h3 className="text-lg font-bold text-gray-900">
+              {trimmedLine.replace('## ', '')}
+            </h3>
+          </div>
+        );
+      }
+      // Check for bold text (wrapped in **)
+      else if (trimmedLine.includes('**')) {
+        const parts = trimmedLine.split(/(\*\*.*?\*\*)/);
+        formattedElements.push(
+          <div key={index} className="mb-2">
+            <div className="text-gray-800">
+              {parts.map((part, partIndex) => {
+                if (part.startsWith('**') && part.endsWith('**')) {
+                  return <strong key={partIndex} className="font-bold text-gray-900">{part.slice(2, -2)}</strong>;
+                }
+                return part;
+              })}
+            </div>
+          </div>
+        );
+      }
+      // Check for bullet points (-)
+      else if (trimmedLine.startsWith('- ')) {
+        formattedElements.push(
+          <div key={index} className="flex items-start gap-3 mb-2">
+            <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+            <div className="text-gray-800">
+              {trimmedLine.replace('- ', '')}
+            </div>
+          </div>
+        );
+      }
+      // Regular paragraphs
+      else {
+        formattedElements.push(
+          <div key={index} className="mb-2">
+            <div className="text-gray-800">
+              {trimmedLine}
+            </div>
+          </div>
+        );
+      }
+    });
+    
+    return formattedElements;
+  };
 
   // Load real NASA climate data
   useEffect(() => {
@@ -354,9 +420,10 @@ const ClimateHistoryDashboard = ({ weatherData, selectedCity, selectedDate }) =>
         if (!isNaN(tempMax) && tempMax > -100 && tempMax < 100) {
           yearlyStats[year].temperatures.push(tempMax);
           
-          // Count hot days (&gt;35°C)
-          if (tempMax > 35) {
+          // Count hot days (&gt;30°C) - lowered threshold for more realistic insights
+          if (tempMax > 30) {
             yearlyStats[year].hotDays++;
+            if (year === 2024) console.log('🔥 Hot day found:', tempMax, 'DOY:', record.DOY);
           }
           
           // Track first warm day (&gt;20°C)
@@ -376,6 +443,7 @@ const ClimateHistoryDashboard = ({ weatherData, selectedCity, selectedDate }) =>
           // Count heavy rain days (&gt;20mm)
           if (precipitation > 20) {
             yearlyStats[year].rainyDays++;
+            if (year === 2024) console.log('🌧️ Heavy rain day found:', precipitation, 'DOY:', record.DOY);
           }
         }
       } catch (error) {
@@ -406,6 +474,12 @@ const ClimateHistoryDashboard = ({ weatherData, selectedCity, selectedDate }) =>
     
     console.log('📊 Обработано годов:', climateData.length);
     console.log('📈 Пример обработанных данных:', climateData.slice(0, 3));
+    
+    // Проверяем итоговые данные
+    const totalHotDays = climateData.reduce((sum, d) => sum + (d.hotDays || 0), 0);
+    const totalRainyDays = climateData.reduce((sum, d) => sum + (d.rainyDays || 0), 0);
+    console.log('🔥 Общее количество жарких дней:', totalHotDays);
+    console.log('🌧️ Общее количество дождливых дней:', totalRainyDays);
     
     return climateData.sort((a, b) => a.year - b.year);
   };
@@ -458,33 +532,41 @@ const ClimateHistoryDashboard = ({ weatherData, selectedCity, selectedDate }) =>
       geminiService.setApiKey(apiKey);
 
       // Calculate climate insights from historical data
+      console.log('🌡️ Климатические данные для AI:', {
+        climateDataLength: climateData.length,
+        climateDataSample: climateData.slice(0, 3),
+        meanTemp: meanTemp
+      });
+      
       const avgHotDays = climateData.length > 0 ? Math.round(climateData.reduce((sum, d) => sum + (d.hotDays || 0), 0) / climateData.length) : 0;
       const avgRainyDays = climateData.length > 0 ? Math.round(climateData.reduce((sum, d) => sum + (d.rainyDays || 0), 0) / climateData.length) : 0;
       const avgFirstWarmDay = climateData.length > 0 ? Math.round(climateData.reduce((sum, d) => sum + (d.firstWarmDay || 90), 0) / climateData.length) : 90;
       const tempTrend = climateData.length > 0 ? (climateData[climateData.length - 1].temperature - climateData[0].temperature) : 0;
       const aboveAverageYears = climateData.filter(d => (d.temperature - meanTemp) > 0).length;
       const belowAverageYears = climateData.filter(d => (d.temperature - meanTemp) < 0).length;
+      
+      console.log('📊 Рассчитанные метрики для AI:', {
+        avgHotDays,
+        avgRainyDays,
+        avgFirstWarmDay,
+        tempTrend,
+        aboveAverageYears,
+        belowAverageYears,
+        meanTemp
+      });
 
-      // Create a simple climate analysis text
-      const climateInsights = `Climate Analysis for ${selectedCity.name} (1999-2024):
-
-Temperature Trends:
-- Average temperature: ${meanTemp.toFixed(1)}°C
-- Temperature trend: ${tempTrend > 0 ? '+' : ''}${tempTrend.toFixed(1)}°C over 25 years
-- Above-average years: ${aboveAverageYears}, Below-average years: ${belowAverageYears}
-
-Extreme Weather Patterns:
-- Average hot days (&gt;35°C): ${avgHotDays} per year
-- Average heavy rain days (&gt;20mm): ${avgRainyDays} per year
-
-Seasonal Changes:
-- First warm day (&gt;20°C): Average day ${avgFirstWarmDay} of the year
-${avgFirstWarmDay < 80 ? '- Spring appears to be arriving earlier' : avgFirstWarmDay > 100 ? '- Spring appears to be arriving later' : '- Spring timing appears stable'}
-
-Climate Summary:
-${tempTrend > 0.5 ? 'The city shows a warming trend over the past 25 years, with increasing temperatures.' : tempTrend < -0.5 ? 'The city shows a cooling trend over the past 25 years.' : 'Temperature has remained relatively stable over the past 25 years.'}
-${avgHotDays > 10 ? 'Hot days are frequent, indicating a warm climate.' : avgHotDays < 5 ? 'Hot days are rare, indicating a moderate climate.' : 'Hot days occur occasionally.'}
-${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climate.' : avgRainyDays < 5 ? 'Heavy rainfall events are rare, suggesting a dry climate.' : 'Heavy rainfall events occur moderately.'}`;
+      // Generate AI climate insights using Gemini
+      const climateInsights = await geminiService.generateClimateInsights({
+        city: selectedCity.name,
+        climateData: climateData,
+        meanTemp: meanTemp,
+        tempTrend: tempTrend,
+        aboveAverageYears: aboveAverageYears,
+        belowAverageYears: belowAverageYears,
+        avgHotDays: avgHotDays,
+        avgRainyDays: avgRainyDays,
+        avgFirstWarmDay: avgFirstWarmDay
+      });
 
       setAiInsights(climateInsights);
     } catch (error) {
@@ -679,7 +761,7 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
       return (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">Extreme Weather Days</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Extreme Weather Days (&gt;30°C &amp; &gt;20mm)</h3>
             <div className="flex items-center gap-2 text-sm text-gray-500">
               <Loader2 className="w-4 h-4 animate-spin" />
               <span>Loading NASA data...</span>
@@ -699,7 +781,7 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
       return (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">Extreme Weather Days</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Extreme Weather Days (&gt;30°C &amp; &gt;20mm)</h3>
             <div className="text-sm text-red-500">Using fallback data</div>
           </div>
           <div className="h-80 bg-gray-50 rounded-lg flex items-center justify-center">
@@ -716,7 +798,7 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
       return (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">Extreme Weather Days</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Extreme Weather Days (&gt;30°C &amp; &gt;20mm)</h3>
           </div>
           <div className="h-80 bg-gray-50 rounded-lg flex items-center justify-center">
             <div className="text-center">
@@ -731,7 +813,7 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
       return (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">Extreme Weather Days</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Extreme Weather Days (&gt;30°C &amp; &gt;20mm)</h3>
           </div>
           <div className="h-80 bg-gray-50 rounded-lg flex items-center justify-center">
             <div className="text-center">
@@ -749,7 +831,7 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
       return (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">Extreme Weather Days</h3>
+            <h3 className="text-lg font-semibold text-gray-900">Extreme Weather Days (&gt;30°C &amp; &gt;20mm)</h3>
           </div>
           <div className="h-80 bg-gray-50 rounded-lg flex items-center justify-center">
             <div className="text-center">
@@ -849,7 +931,7 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
         </div>
         
         <div className="text-sm text-gray-600">
-          <p>Average hot days per year: {climateData.length > 0 ? Math.round(climateData.reduce((sum, d) => sum + (d.hotDays || 0), 0) / climateData.length) : 0}</p>
+          <p>Average hot days per year (&gt;30°C): {climateData.length > 0 ? Math.round(climateData.reduce((sum, d) => sum + (d.hotDays || 0), 0) / climateData.length) : 0}</p>
           <p>Average rainy days per year: {climateData.length > 0 ? Math.round(climateData.reduce((sum, d) => sum + (d.rainyDays || 0), 0) / climateData.length) : 0}</p>
         </div>
       </div>
@@ -1177,7 +1259,7 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
 
   return (
     <div className="space-y-6">
-      {/* Climate History Dashboard */}
+      {/* Climate History */}
       <AnimatedCard direction="scale" delay={300} duration={700}>
         <div className="nasa-card mb-4 sm:mb-6">
           <div className="flex items-center gap-4 mb-6">
@@ -1187,7 +1269,7 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
             <div className="flex-1">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Climate History Dashboard</h2>
+                  <h2 className="text-2xl font-bold text-gray-900">Climate History</h2>
                   <p className="text-sm text-gray-500">25 years of climate data analysis (1999-2024)</p>
                 </div>
                 <button
@@ -1333,7 +1415,9 @@ ${avgRainyDays > 15 ? 'Heavy rainfall events are common, suggesting a wet climat
             
             {aiInsights && !isLoadingInsights && !insightsError && (
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <p className="text-sm text-gray-800 leading-relaxed">{aiInsights}</p>
+                <div className="text-sm text-gray-800 leading-relaxed">
+                  {formatAIInsights(aiInsights)}
+                </div>
               </div>
             )}
             
